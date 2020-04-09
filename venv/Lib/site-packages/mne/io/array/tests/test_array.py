@@ -15,7 +15,7 @@ from mne.io import read_raw_fif
 from mne.io.array import RawArray
 from mne.io.tests.test_raw import _test_raw_reader
 from mne.io.meas_info import create_info, _kind_dict
-from mne.utils import requires_version, run_tests_if_main
+from mne.utils import run_tests_if_main
 from mne.channels import make_dig_montage
 
 base_dir = op.join(op.dirname(__file__), '..', '..', 'tests', 'data')
@@ -71,7 +71,6 @@ def test_array_copy():
 
 
 @pytest.mark.slowtest
-@requires_version('scipy', '0.12')
 def test_array_raw():
     """Test creating raw from array."""
     # creating
@@ -167,10 +166,11 @@ def test_array_raw():
         ch_pos=dict(zip(ch_names, ch_pos_loc)),
         coord_frame='head'
     )
-    info = create_info(ch_names, Fs, 'ecog', montage=montage)
+    info = create_info(ch_names, Fs, 'ecog')
 
     raw = RawArray(data, info)
-    raw.plot_psd(average=False)  # looking for inexistent layout
+    raw.set_montage(montage)
+    raw.plot_psd(average=False)  # looking for nonexistent layout
     raw.plot_psd_topo()
 
 

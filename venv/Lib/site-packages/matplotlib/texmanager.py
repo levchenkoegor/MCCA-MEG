@@ -22,7 +22,7 @@ as follows::
   texmanager = TexManager()
   s = ('\TeX\ is Number '
        '$\displaystyle\sum_{n=1}^\infty\frac{-e^{i\pi}}{2^n}$!')
-  Z = texmanager.get_rgba(s, fontsize=12, dpi=80, rgb=(1,0,0))
+  Z = texmanager.get_rgba(s, fontsize=12, dpi=80, rgb=(1, 0, 0))
 
 To enable tex rendering of all text in your matplotlib figure, set
 :rc:`text.usetex` to True.
@@ -46,7 +46,7 @@ from matplotlib import cbook, dviread, rcParams
 _log = logging.getLogger(__name__)
 
 
-class TexManager(object):
+class TexManager:
     """
     Convert strings to dvi files using TeX, caching the results to a directory.
 
@@ -86,10 +86,13 @@ class TexManager(object):
         'helvetica': ('phv', r'\usepackage{helvet}'),
         'avant garde': ('pag', r'\usepackage{avant}'),
         'courier': ('pcr', r'\usepackage{courier}'),
-        'monospace': ('cmtt', ''),
-        'computer modern roman': ('cmr', ''),
-        'computer modern sans serif': ('cmss', ''),
-        'computer modern typewriter': ('cmtt', '')}
+        # Loading the type1ec package ensures that cm-super is installed, which
+        # is necessary for unicode computer modern.  (It also allows the use of
+        # computer modern at arbitrary sizes, but that's just a side effect.)
+        'monospace': ('cmtt', r'\usepackage{type1ec}'),
+        'computer modern roman': ('cmr', r'\usepackage{type1ec}'),
+        'computer modern sans serif': ('cmss', r'\usepackage{type1ec}'),
+        'computer modern typewriter': ('cmtt', r'\usepackage{type1ec}')}
 
     _rc_cache = None
     _rc_cache_keys = (
@@ -203,11 +206,10 @@ class TexManager(object):
                                                        r'{\rmfamily %s}')
         tex = fontcmd % tex
 
-        if rcParams['text.latex.unicode']:
-            unicode_preamble = r"""
-\usepackage[utf8]{inputenc}"""
-        else:
-            unicode_preamble = ''
+        unicode_preamble = "\n".join([
+            r"\usepackage[utf8]{inputenc}",
+            r"\DeclareUnicodeCharacter{2212}{\ensuremath{-}}",
+        ]) if rcParams["text.latex.unicode"] else ""
 
         s = r"""
 \documentclass{article}
@@ -227,7 +229,7 @@ class TexManager(object):
             else:
                 try:
                     fh.write(s.encode('ascii'))
-                except UnicodeEncodeError as err:
+                except UnicodeEncodeError:
                     _log.info("You are using unicode and latex, but have not "
                               "enabled the 'text.latex.unicode' rcParam.")
                     raise
@@ -254,11 +256,10 @@ class TexManager(object):
                                                        r'{\rmfamily %s}')
         tex = fontcmd % tex
 
-        if rcParams['text.latex.unicode']:
-            unicode_preamble = r"""
-\usepackage[utf8]{inputenc}"""
-        else:
-            unicode_preamble = ''
+        unicode_preamble = "\n".join([
+            r"\usepackage[utf8]{inputenc}",
+            r"\DeclareUnicodeCharacter{2212}{\ensuremath{-}}",
+        ]) if rcParams["text.latex.unicode"] else ""
 
         # newbox, setbox, immediate, etc. are used to find the box
         # extent of the rendered text.
@@ -289,7 +290,7 @@ class TexManager(object):
             else:
                 try:
                     fh.write(s.encode('ascii'))
-                except UnicodeEncodeError as err:
+                except UnicodeEncodeError:
                     _log.info("You are using unicode and latex, but have not "
                               "enabled the 'text.latex.unicode' rcParam.")
                     raise
@@ -297,7 +298,7 @@ class TexManager(object):
         return texfile
 
     def _run_checked_subprocess(self, command, tex):
-        _log.debug(command)
+        _log.debug(cbook._pformat_subprocess(command))
         try:
             report = subprocess.check_output(command,
                                              cwd=self.texcache,
@@ -402,7 +403,8 @@ class TexManager(object):
         alpha = self.grey_arrayd.get(key)
         if alpha is None:
             pngfile = self.make_png(tex, fontsize, dpi)
-            X = _png.read_png(os.path.join(self.texcache, pngfile))
+            with open(os.path.join(self.texcache, pngfile), "rb") as file:
+                X = _png.read_png(file)
             self.grey_arrayd[key] = alpha = X[:, :, -1]
         return alpha
 
