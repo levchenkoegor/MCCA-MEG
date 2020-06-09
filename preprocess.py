@@ -34,7 +34,7 @@ def preprocess(mne_obj_data, subj_path):
     # Downsample
     mne_obj_data.pick_types(meg=True, stim=True, eog=True, ecg=True, misc=False)
     mne_obj_data.drop_channels(['STI201', 'STI301'])
-    mne_obj_data.resample(250)
+    #mne_obj_data.resample(250)
 
     # Filter and save properties plots
     mne_obj_data.notch_filter(freqs=[50, 100])
@@ -146,13 +146,14 @@ vid_dur = {'vid1': 380, 'vid2': 290, 'vid3': 381, 'vid4': 372}#seconds
 # Main
 def concat_anon_resample_save(paths_to_raws, bad_files):
 
-    subj_codes = ['subject-' + str(random.randint(100, 200)) for i in range(0, int(len(paths_to_raws)))]
+    subj_codes = ['subj-' + str(i) for i in range(10, len(paths_to_raws)+10)]
 
     subjs_names_codes = dict()
     for subj_i in range(0, len(paths_to_raws), 4):
 
+        # check if raw file is bad
         if any(subj_i in bad_files for subj_i in list(range(subj_i, subj_i+4))):
-            print(f'Subject {subj_i} is skiiped')
+            print(f'Subject {subj_i} is skipped')
             continue
 
         # parse subject name
@@ -177,8 +178,9 @@ def concat_anon_resample_save(paths_to_raws, bad_files):
 
     return subjs_names_codes
 
-bad_files = [] #[25, 27, 44, 46, 72, 73, 88, 90]
-subj_codes = concat_anon_resample_save(paths[100:], bad_files)
+bad_files = [25, 27, 44, 46, 48, 49, 72, 73, 88, 90] # files with AttributeError during reading
+subj_names_codes = concat_anon_resample_save(paths, bad_files)
+
 
 
 subj_i_paths = []
