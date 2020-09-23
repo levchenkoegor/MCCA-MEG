@@ -187,7 +187,7 @@ subj_i_paths = []
 data_raws_conds = [mne.io.read_raw_fif(paths[cond_i], preload=True) for cond_i in range(0, 4)]
 data_raw = mne.concatenate_raws(data_raws_conds)
 
-for subj_i in range(26, len(paths)):
+for subj_i in range(0, len(paths)):
     data = mne.io.read_raw_fif(paths[subj_i], preload=True)
 
     data = correct_events(data_raw)
@@ -216,6 +216,86 @@ for subj_i in range(26, len(paths)):
 #7. Run the preprocessing for all subjects
 
 #8 SUBJ_I = 3, 24, 25, 30 DOESNT WORK EOG ARTIFACTS
+
+
+### bad code to make fast preprocessing
+import mne
+from pathlib import Path
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+root = Path(os.getcwd())
+
+paths = [Path(path) / f for (path, folders, files) in os.walk(root.parent / 'data' / 'raw_data')
+         if 'Group' in path
+         for f in files if f.endswith('tsss_mc_trans.fif')]
+
+vid_dur = {'vid1': 380, 'vid2': 290, 'vid3': 381, 'vid4': 372} # duration of movies in seconds"
+
+
+subj_to_preprocess = list()
+pp_subj_name = [path.parts[-1][:-4] for path in list((root.parent / 'MEG_ISC_somedata' / 'preprocessed').iterdir())]
+for subj_i in range(0, len(paths)):
+    subj_name = str(paths[subj_i]).split('\\')[-1][:-18]
+    if subj_name in pp_subj_name:
+        print('Already preprocessed')
+    else:
+        print('Appending')
+        subj_to_preprocess.append(subj_i)
+
+
+#pp
+subj_i_to_pp = 38
+
+data = mne.io.read_raw_fif(paths[subj_to_preprocess[subj_i_to_pp]], preload=True)
+data.pick_types(meg=True, stim=True, eog=True)
+data.resample(250)
+
+data.notch_filter(freqs=[50, 100])
+data.filter(l_freq=0.5, h_freq=None)
+
+events = mne.find_events(data, stim_channel='STI101')
+print('Raw events:\n', events)
+print('First samp:\n', data.first_samp)
+events_corrected = np.array([[event[0] - data.first_samp, event[1], event[2]] for event in events])
+print('Corrected events:\n', events_corrected)
+onset = events_corrected[-1][0] / data.info['sfreq']
+descr = 'vid' + str(events_corrected[-1][-1])
+event_annot = mne.Annotations(onset=[onset], duration=[0.01], description=descr)
+data.set_annotations(event_annot)
+
+epoch = data.copy().crop(tmin=events_corrected[-2][0]/250-0.01,
+                         tmax=events_corrected[-2][0]/250+vid_dur['vid'+str(events_corrected[-2][-1])])
+print(epoch)
+
+ica_fit = mne.preprocessing.ICA(n_components=20, method='fastica').fit(epoch)
+ica_fit.plot_components()
+
+ica_fit.apply(epoch, exclude=[0])
+
+subj_id = str(paths[subj_to_preprocess[subj_i_to_pp]].parts[-1][:-18])
+epoch.save(fname=root.parent / 'MEG_ISC_somedata' / 'preprocessed' / (subj_id + '_preprocessed.fif'))
+plt.close('all')
+
+# compare ISC between movies
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
