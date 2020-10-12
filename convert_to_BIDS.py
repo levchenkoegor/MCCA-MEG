@@ -5,6 +5,10 @@ import mne
 import mne_bids
 import pandas as pd
 
+#import dicom2nifti
+#dicom2nifti.dicom_series_to_nifti(proj_root / 'MRI_scans' / 'kopytin_grigory' / 'DICOM',
+#                                  proj_root / 'test_kopytin_dcm2nifti', reorient_nifti=True)
+
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
 data_bids_dir = proj_root / 'data_bids'
@@ -24,7 +28,7 @@ for raw_file_path in raw_files_paths:
     subj_fullname = '_'.join(subj_filename[:2])
 
     if subj_fullname in subj_bids_codes.keys():
-        subj_id = subj_bids_codes[subj_fullname]
+        subj_id = str(subj_bids_codes[subj_fullname])
         task_name = subj_filename[-1].split('.')[0] # vid%
     else:
         subj_id = 'emptyroom'
@@ -43,7 +47,8 @@ for raw_file_path in raw_files_paths:
 df_subj_bids_codes = pd.DataFrame.from_dict(subj_bids_codes, orient='index')
 df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 
-# Add logging
-
-
-
+# TODO:
+## Solve problem with AttributeError for 5 subjects
+## Add logging
+## MRI data: from DICOM to NIFTI to BIDS
+## Validate the whole dataset
