@@ -6,4 +6,5 @@ dependencies:
   - matplotlib=3.1.1
   - conda-forge::mne=0.20.5
   - conda-forge::mne-bids=0.4
+  - conda-forge::dicom2nifti=2.2.10
   - pandas=1.1.1
