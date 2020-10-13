@@ -1,6 +1,7 @@
 name: MCCA-MEG
 dependencies:
   - python=3.7.7
+  - pip=20.2.3
   - numpy=1.17.2
   - scipy=1.3.1
   - matplotlib=3.1.1
@@ -8,3 +9,8 @@ dependencies:
   - conda-forge::mne-bids=0.4
   - conda-forge::dicom2nifti=2.2.10
   - pandas=1.1.1
+  - pip:
+      -git+https://github.com/bids-standard/pybids.git
+
+# TODO:
+## Pip environment problems
