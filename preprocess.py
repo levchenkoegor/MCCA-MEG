@@ -1,24 +1,32 @@
 import os
 import mne
-import numpy as np
-import matplotlib
-import random
+
 from pathlib import Path
+from bids import BIDSLayout
+
 
 # Basic preprocessing
-def downsample(raw, target_fs):
+def downsample(raw, target_fs, savefile=None, overwrite=True):
     raw.resample(target_fs, npad='auto')
+    if not (savefile is None):
+        raw.save(savefile, overwrite=overwrite)
     return raw
 
-def linear_filtering(raw, notch=None, l_freq=None, h_freq=None):
+
+def linear_filtering(raw, notch=None, l_freq=None, h_freq=None, savefile=None, overwrite=True):
     raw.notch_filter(notch, filter_length='auto', phase='zero')
     raw.filter(l_freq, h_freq, fir_design='firwin')
+    if not (savefile is None):
+        raw.save(savefile, overwrite=overwrite)
     return raw
 
-def draw_psd(raw, show=False, savefig=True):
-    p = raw.plot_psd(show=show, fmax=150)
+
+def draw_psd(raw, show=False, savefile=None):
+    p = raw.plot_psd(show=show, fmax=125)
     p.axes[0].set_ylim(-30, 60)
-    #p.savefig(output[0])
+    if not (savefile is None):
+        p.savefig(savefile)
+
 
 # ICA
 def fit_ica(raw, h_freq=1):
@@ -26,6 +34,7 @@ def fit_ica(raw, h_freq=1):
     ica = mne.preprocessing.ICA(random_state=2, n_components=25, verbose=False)
     ica.fit(raw)
     return ica
+
 
 def find_ics(raw, ica, verbose=False):
     heart_ics, _ = ica.find_bads_ecg(raw, verbose=verbose)
@@ -39,6 +48,7 @@ def find_ics(raw, ica, verbose=False):
     all_ics = list(set(all_ics))
 
     return all_ics
+
 
 def find_ics_iteratively(raw, ica, verbose=False):
     ics = []
@@ -58,18 +68,22 @@ def find_ics_iteratively(raw, ica, verbose=False):
 
     return ics
 
-def apply_ica(raw, ica, ics): #RECHECK
+
+def apply_ica(raw, ica, ics):  # RECHECK
     ica.apply(raw)
     return raw
+
 
 # SSP
 def find_eog_chs(raw):
     eog_chs = [ch_name for ch_name in raw.info['ch_names'] if 'EOG' in ch_name]
     return eog_chs
 
+
 def find_ecg_chs(raw):
     ecg_chs = [ch_name for ch_name in raw.info['ch_names'] if 'ECG' in ch_name]
     return ecg_chs
+
 
 def fit_ssp_eog(raw, eog_chs):
     eog_projs_source1, eog_events_source1 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0,
@@ -78,39 +92,64 @@ def fit_ssp_eog(raw, eog_chs):
                                                                                ch_name=eog_chs[1], event_id=991)
     return [eog_projs_source1, eog_projs_source2], [eog_events_source1, eog_events_source2]
 
+
 def fit_ssp_ecg(raw, ecg_chs):
     ecg_projs, ecg_events = mne.preprocessing.compute_proj_ecg(raw, n_grad=1, n_mag=1, n_eeg=0,
                                                                ch_name=ecg_chs, event_id=988)
     return ecg_projs, ecg_events
 
-#def apply_ssp(raw):
-    # something
+
+# def apply_ssp(raw):
+# something
 
 
-#Preprocessing:
-#downsample
-#draw_psd & save
-#filtering & save
-#draw_psd & save
-#check for EOG&ECG channels
-#fit_ica & save ICA object
-#fit_notICA & save notICA object
-#exclude_EOG&ECG_components & save Raw
+# Preprocessing:
+# check for EOG&ECG channels
+# fit_ica & save ICA object
+# fit_notICA & save notICA object
+# exclude_EOG&ECG_components & save Raw
 
-#*Save in derivatives
-#*Empty_room noise
-#*Correct events function
-#*Coordinates channels conversion for future MRI coreg (maxfiltering)
+# *Save in derivatives
+# *Empty_room noise
+# *Correct events function
+# *Coordinates channels conversion for future MRI coreg (maxfiltering)
 
-#ISC calculations:
-#...
+# ISC calculations:
+# ...
 
+
+# MAIN
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
 data_bids_dir = proj_root / 'data_bids'
+data_deriv_dir = data_bids_dir / 'derivatives'
 
-raw = mne.io.read_raw_fif(r"E:\Egor_Levchenko\ISC\Experiment3_videos_MEG\data_bids\sub-1001\ses-20190416\meg\sub-1001_ses-20190416_task-vid1_meg.fif", preload=True)
-raw = downsample(raw, 250)
-raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3)
-#continue the pipeline ->
+layout = BIDSLayout(data_bids_dir, validate=True)
+json_files = layout.get(suffix='meg', extension='json')
 
+subjects = [json_file.get_entities()['subject'] for json_file in json_files]
+sessions = [json_file.get_entities()['session'] for json_file in json_files]
+tasks = [json_file.get_entities()['task'] for json_file in json_files]
+
+template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}_meg')
+
+raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
+raw_files_paths = raw_files_paths[0:2]
+
+for i, raw_file_path in enumerate(raw_files_paths):
+    raw = mne.io.read_raw_fif(raw_file_path, preload=True)
+    path_savefile = data_deriv_dir / template.format(subject=subjects[i],
+                                                     session=sessions[i],
+                                                     task=tasks[i])
+    path_savefile.parent.mkdir(parents=True, exist_ok=True)
+    overwrite = True
+
+    # Basic preprocessing
+    raw = downsample(raw, target_fs=250, savefile=None, overwrite=overwrite)
+    draw_psd(raw, show=False, savefile=str(path_savefile) + '_PSD_before.png')
+    raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3, savefile=str(path_savefile) + '_linear_filtering.fif',
+                           overwrite=overwrite)
+    draw_psd(raw, show=False, savefile=str(path_savefile) + '_PSD_after.png')
+
+    #
+    # continue the pipeline ->
