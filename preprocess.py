@@ -204,21 +204,22 @@ for i, raw_file_path in enumerate(raw_files_paths):
 
     # continue the pipeline ->
 
-# TODO-Preprocessing:
-## maxfilter: manuall bad_channels detection after automatic
-## fine calibration file and crosstalk compensation file?
+# TODO-MUST-HAVE-PREPROCESSING:
 ## check for EOG&ECG channels
 ## fit_ica & save ICA object
 ## fit_notICA & save notICA object
 ## exclude_EOG&ECG_components & save Raw
 ## check the whole pipeline - make refactoring
-## *Save in derivatives
 ## *Empty_room noise
 ## *Correct events function
-## *Coordinates channels conversion for future MRI coreg (maxfiltering)
-## Overwrite=False looks useles know
 
-# TODO-ISC:
+# TODO-NICE-TO-HAVE:
+## maxfilter: manuall bad_channels detection after automatic
+## fine calibration file and crosstalk compensation file?
+## Overwrite=False looks useles now
+## *Coordinates channels conversion for future MRI coreg (maxfiltering)
+
+# TODO-MUST-HAVE-ISC:
 ## Adapt ISC function for this pipeline
 
 
