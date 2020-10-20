@@ -52,3 +52,4 @@ df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 ## Add logging
 ## MRI data: from DICOM to NIFTI to BIDS
 ## Validate the whole dataset
+## Should I downsample raw_data and then save to BIDS (for saving memory storage)?
