@@ -6,6 +6,11 @@ from bids import BIDSLayout
 
 
 # Basic preprocessing
+def increase_rec_time(raw, t=30):
+    raw_crop = raw.copy().crop(tmax=t)
+    raw.append(raw_crop)
+    return raw
+
 def downsample(raw, target_fs, savefile=None, overwrite=True):
     raw.resample(target_fs, npad='auto')
     if savefile:
@@ -114,23 +119,29 @@ def fit_ssp_ecg(raw, ecg_chs):
 
 # Maxwell filtering
 def find_bad_ch_maxwell(raw):
-    noisy_chs, flat_chs, scores = mne.preprocessing.find_bad_channels_maxwell(raw,
-                                                                              return_scores=True,
-                                                                              verbose=False)
-    #print(noisy_chs)
-    #print(flat_chs)
-
+    noisy_chs, flat_chs, _ = mne.preprocessing.find_bad_channels_maxwell(raw,
+                                                                         min_count=3,
+                                                                         return_scores=True,
+                                                                         verbose=False)
     raw.info['bads'] = raw.info['bads'] + noisy_chs + flat_chs
     return raw
 
 
-def maxwell_filtering(raw, savefile=None, overwrite=True, verbose=False):
-    raw_sss = mne.preprocessing.maxwell_filter(raw, verbose=verbose)
+def maxwell_filtering(raw, st_duration=10, head_pos=None, savefile=None, overwrite=True, verbose=False):
+    raw_tsss = mne.preprocessing.maxwell_filter(raw, st_duration=st_duration,
+                                                head_pos=head_pos, verbose=verbose)
     if savefile:
-        raw_sss.save(savefile, overwrite=overwrite)
-    return raw_sss
+        raw_tsss.save(savefile, overwrite=overwrite)
+    return raw_tsss
 
 
+def chpi_find_head_pos(raw, savefile=None, verbose=False):
+    chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw, verbose=verbose)
+    chpi_locs = mne.chpi.compute_chpi_locs(raw.info, chpi_amplitudes, verbose=verbose)
+    head_pos = mne.chpi.compute_head_pos(raw.info, chpi_locs, verbose=verbose)
+    if savefile:
+        mne.chpi.write_head_pos(savefile, head_pos)
+    return head_pos
 
 
 # MAIN
@@ -149,49 +160,53 @@ tasks = [json_file.get_entities()['task'] for json_file in json_files]
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
 raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
-start_i = 15
-raw_files_paths = raw_files_paths[start_i:]
+#start_i = 15
+raw_files_paths = raw_files_paths[0:2]
 
 for i, raw_file_path in enumerate(raw_files_paths):
-    i = i+start_i
-    raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
+    #i = i+start_i
+    raw = mne.io.read_raw_fif(raw_files_paths[0], preload=True, verbose=False)
     path_savefile = data_deriv_dir / template.format(subject=subjects[i],
                                                      session=sessions[i],
                                                      task=tasks[i])
     path_savefile.parent.mkdir(parents=True, exist_ok=True)
     overwrite = True
+    # To avoid any filter effects add chunk to the end of the trial
+    raw = increase_rec_time(raw, t=30)
 
     # Cut-off until 20 seconds before video starts
     # something
 
     # Basic preprocessing
-    raw = downsample(raw, target_fs=250)
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
     raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
                            savefile=str(path_savefile) + '_linear_filtering_meg.fif')
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
     # Maxwell filtering:
-    # https://mne.tools/stable/auto_tutorials/preprocessing/plot_60_maxwell_filtering_sss.html#sphx-glr-auto-tutorials-preprocessing-plot-60-maxwell-filtering-sss-py
     raw = find_bad_ch_maxwell(raw)
-    raw = maxwell_filtering(raw, savefile=str(path_savefile) + '_maxwell_filtering_meg.fif')
+    head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
+    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
+                            savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
+
+    # Downsample
+    raw = downsample(raw, target_fs=250)
 
     # ECG/EOG artifacts removal
-    # eog_chs = find_eog_chs(raw)
-    # if eog_chs:
-    #     [eog_projs_source1, eog_projs_source2], [eog_events_source1, eog_events_source2] = fit_ssp_eog(raw, eog_chs)
-    # else:
-    #     ica = fit_ica(raw, h_freq=1)
-    #     ics = find_ics_iteratively(raw, ica)
-    #     ica.apply(raw, exclude=ics)
-    #     # ICA
-    ica = fit_ica(raw, h_freq=1, savefile=str(path_savefile) + '_ica.fif')
-    ics = find_ics_iteratively(raw, ica, savefile=str(path_savefile) + '_ics.txt')
-    raw = apply_ica(raw, ica, ics, savefile=str(path_savefile) + '_applied_ICA_meg.fif')
+    eog_chs = find_eog_chs(raw)
+    if eog_chs:
+        [eog_projs_source1, eog_projs_source2], [eog_events_source1, eog_events_source2] = fit_ssp_eog(raw, eog_chs)
+    else:
+        ica = fit_ica(raw, h_freq=1, savefile=str(path_savefile) + '_ica.fif')
+        ics = find_ics_iteratively(raw, ica, savefile=str(path_savefile) + '_ics.txt')
+        raw = apply_ica(raw, ica, ics, savefile=str(path_savefile) + '_applied_ICA_meg.fif')
+
 
     # continue the pipeline ->
 
 # TODO-Preprocessing:
+## maxfilter: manuall bad_channels detection after automatic
+## fine calibration file and crosstalk compensation file?
 ## check for EOG&ECG channels
 ## fit_ica & save ICA object
 ## fit_notICA & save notICA object
