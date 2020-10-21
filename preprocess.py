@@ -63,10 +63,13 @@ def fit_ica(raw, h_freq=1, savefile=None, verbose=False):
     return ica
 
 
-def find_ics(raw, ica, verbose=False):
+def find_ics(raw, ica, eog_chs=('MEG0521', 'MEG0921'), verbose=False):
+    eog_chs_raw = find_chs(raw, ch_type='EOG')
+    eog_chs = eog_chs_raw if eog_chs_raw else eog_chs
+
     heart_ics, _ = ica.find_bads_ecg(raw, threshold='auto', verbose=verbose)
-    horizontal_eye_ics, _ = ica.find_bads_eog(raw, ch_name='MEG0521', verbose=verbose)
-    vertical_eye_ics, _ = ica.find_bads_eog(raw, ch_name='MEG0921', verbose=verbose)
+    horizontal_eye_ics, _ = ica.find_bads_eog(raw, ch_name=eog_chs[0], verbose=verbose)
+    vertical_eye_ics, _ = ica.find_bads_eog(raw, ch_name=eog_chs[1], verbose=verbose)
 
     all_ics = heart_ics + horizontal_eye_ics + vertical_eye_ics
     # find_bads_E*G returns list of np.int64, not int
@@ -81,7 +84,8 @@ def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
     ics = []
 
     new_ics = True  # so that the while loop initiates at all
-    while new_ics:
+    i = 0
+    while new_ics and i < 3:
         raw_copy = raw.copy()
 
         # Remove all components we've found so far
@@ -92,6 +96,7 @@ def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
 
         # print(new_ics)
         ics += new_ics
+        i += 1
 
     if savefile:
         f = open(savefile, 'w')
@@ -131,9 +136,9 @@ def fit_ssp_eog(raw, eog_chs, savefile=None, verbose=False):
     eog_projs_source2, eog_events_source2 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
                                                               ch_name=eog_chs[1], event_id=991, verbose=verbose)
     eog_projs = eog_projs_source1 + eog_projs_source2
-    eog_events = eog_events_source1 + eog_events_source2
+    eog_events = np.vstack((eog_events_source1, eog_events_source2))
     if savefile:
-        mne.write_projs(savefile, eog_projs)
+        mne.write_proj(savefile, eog_projs)
     return eog_projs, eog_events
 
 
@@ -141,7 +146,7 @@ def fit_ssp_ecg(raw, ecg_chs, savefile=None, verbose=False):
     ecg_projs, ecg_events = mne.preprocessing.compute_proj_ecg(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
                                                                ch_name=ecg_chs, event_id=988, verbose=verbose)
     if savefile:
-        mne.write_projs(savefile, ecg_projs)
+        mne.write_proj(savefile, ecg_projs)
     return ecg_projs, ecg_events
 
 
@@ -206,17 +211,19 @@ tasks = [json_file.get_entities()['task'] for json_file in json_files]
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
 raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
-# start_i = 15
-raw_files_paths = raw_files_paths
+raw_files_paths_vid2 = [raw_file_path for raw_file_path in raw_files_paths if 'vid2' in str(raw_file_path)]
+raw_files_paths_vid2_i = [i for i, raw_file_path in enumerate(raw_files_paths) if 'vid2' in str(raw_file_path)]
+#start_i = 9
+#raw_files_paths = raw_files_paths[start_i:]
 
-for i, raw_file_path in enumerate(raw_files_paths):
-    # i = i+start_i
+for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
+    #i = i+start_i
+    print(f'{i}, sub-{subjects[i]}_task-{tasks[i]} is calculating...')
     raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
     path_savefile = data_deriv_dir / template.format(subject=subjects[i],
                                                      session=sessions[i],
                                                      task=tasks[i])
     path_savefile.parent.mkdir(parents=True, exist_ok=True)
-    overwrite = True
 
     # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
     # too long part before event starts
@@ -240,18 +247,16 @@ for i, raw_file_path in enumerate(raw_files_paths):
     raw = downsample(raw, target_fs=250)
 
     # ECG/EOG artifacts removal
-    eog_chs = find_chs(raw, ch_type='EOG')
-    ecg_chs = find_chs(raw, ch_type='ECG')
-    if eog_chs and ecg_chs:
-        raw = ssp_routine(raw, eog_chs=eog_chs, ecg_chs=ecg_chs)
-    else:
-        raw = ica_routine(raw)
+    raw = ica_routine(raw)
 
     # continue the pipeline ->
 
 # TODO-MUST-HAVE-PREPROCESSING:
 ## decrease_raw_length()
-## function to pick only video interval
+## function to pick only video interval (?)
+## choose the best channels for ICA when there are no EOG chs (line 66)
+## solve the infinite problem with iterative ICA (why it goes to infinity?)
+
 
 # TODO-NICE-TO-HAVE:
 ## maxfilter: manuall bad_channels detection after automatic
@@ -263,6 +268,7 @@ for i, raw_file_path in enumerate(raw_files_paths):
 ## *coordinates channels conversion for future MRI coreg (maxfiltering)
 ## *Empty_room noise
 ## *Correct events function
+## Filenames insdie the function to make loop cleaner
 
 # TODO-MUST-HAVE-ISC:
 ## Adapt ISC function for this pipeline
