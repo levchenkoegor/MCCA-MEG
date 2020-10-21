@@ -10,7 +10,7 @@ dependencies:
   - conda-forge::dicom2nifti=2.2.10
   - pandas=1.1.1
 # - pip:
-#      -autoreject=0.2.1
+#      -PyBIDS should be here!
 
 # TODO:
 ## Pip environment problems
