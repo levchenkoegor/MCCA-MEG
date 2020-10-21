@@ -1,16 +1,36 @@
 import os
 import mne
+import numpy as np
 
 from pathlib import Path
 from bids import BIDSLayout
 
 
-# Basic preprocessing
-def increase_rec_time(raw, t=30):
+# Helpers
+def set_annot_from_events(raw, verbose=False):
+    events = mne.find_events(raw, stim_channel='STI101', verbose=verbose)
+    onsets = events[:, 0] / raw.info['sfreq']
+    durations = np.zeros_like(onsets)
+    descriptions = [str(event_id) for event_id in events[:, -1]]
+    annot_from_events = mne.Annotations(onset=onsets, duration=durations,
+                                        description=descriptions,
+                                        orig_time=raw.info['meas_date'])
+    raw.set_annotations(annot_from_events)
+    return raw
+
+
+def increase_raw_length(raw, t=30):
     raw_crop = raw.copy().crop(tmax=t)
     raw.append(raw_crop)
     return raw
 
+
+def decrease_raw_length(raw, events, t_before_event=30):
+
+    return raw
+
+
+# Basic preprocessing
 def downsample(raw, target_fs, savefile=None, overwrite=True):
     raw.resample(target_fs, npad='auto')
     if savefile:
@@ -70,7 +90,7 @@ def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
         # Identify bad components in cleaned data
         new_ics = find_ics(raw_copy, ica, verbose=verbose)
 
-        #print(new_ics)
+        # print(new_ics)
         ics += new_ics
 
     if savefile:
@@ -81,39 +101,65 @@ def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
     return ics
 
 
-def apply_ica(raw, ica, ics, savefile=None, overwrite=True):
+def apply_ica_proj(raw, ica, ics, savefile=None, overwrite=True):
     ica.apply(raw, exclude=ics)
     if savefile:
         raw.save(savefile, overwrite=overwrite)
     return raw
 
 
+def ica_routine(raw):
+    ica = fit_ica(raw, h_freq=1, savefile=str(path_savefile) + '_ica.fif')
+    ics = find_ics_iteratively(raw, ica, savefile=str(path_savefile) + '_ics.txt')
+    raw = apply_ica_proj(raw, ica, ics, savefile=str(path_savefile) + '_applied_ICA_meg.fif')
+    return raw
+
+
+# def plot_ica():
+    # something
+
+
 # SSP
-def find_eog_chs(raw):
-    eog_chs = [ch_name for ch_name in raw.info['ch_names'] if 'EOG' in ch_name]
-    return eog_chs
+def find_chs(raw, ch_type=None):
+    chs_names = [ch_name for ch_name in raw.info['ch_names'] if ch_type in ch_name]
+    return chs_names
 
 
-def find_ecg_chs(raw):
-    ecg_chs = [ch_name for ch_name in raw.info['ch_names'] if 'ECG' in ch_name]
-    return ecg_chs
+def fit_ssp_eog(raw, eog_chs, savefile=None, verbose=False):
+    eog_projs_source1, eog_events_source1 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
+                                                              ch_name=eog_chs[0], event_id=990, verbose=verbose)
+    eog_projs_source2, eog_events_source2 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
+                                                              ch_name=eog_chs[1], event_id=991, verbose=verbose)
+    eog_projs = eog_projs_source1 + eog_projs_source2
+    eog_events = eog_events_source1 + eog_events_source2
+    if savefile:
+        mne.write_projs(savefile, eog_projs)
+    return eog_projs, eog_events
 
 
-def fit_ssp_eog(raw, eog_chs):
-    eog_projs_source1, eog_events_source1 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0,
-                                                                               ch_name=eog_chs[0], event_id=990)
-    eog_projs_source2, eog_events_source2 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0,
-                                                                               ch_name=eog_chs[1], event_id=991)
-    return [eog_projs_source1, eog_projs_source2], [eog_events_source1, eog_events_source2]
-
-
-def fit_ssp_ecg(raw, ecg_chs):
-    ecg_projs, ecg_events = mne.preprocessing.compute_proj_ecg(raw, n_grad=1, n_mag=1, n_eeg=0,
-                                                               ch_name=ecg_chs, event_id=988)
+def fit_ssp_ecg(raw, ecg_chs, savefile=None, verbose=False):
+    ecg_projs, ecg_events = mne.preprocessing.compute_proj_ecg(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
+                                                               ch_name=ecg_chs, event_id=988, verbose=verbose)
+    if savefile:
+        mne.write_projs(savefile, ecg_projs)
     return ecg_projs, ecg_events
 
 
-# def apply_ssp(raw):
+def apply_ssp_proj(raw, projs, verbose=False):
+    raw.add_proj(projs)
+    raw.apply_proj(verbose=verbose)
+    return raw
+
+
+def ssp_routine(raw, eog_chs, ecg_chs):
+    eog_projs, _ = fit_ssp_eog(raw, eog_chs, savefile=str(path_savefile) + 'eog_projs.fif')
+    ecg_projs, _ = fit_ssp_ecg(raw, ecg_chs, savefile=str(path_savefile) + 'ecg_projs.fif')
+    # plot projs and etc
+    raw = apply_ssp_proj(raw, projs=eog_projs+ecg_projs)
+    return raw
+
+
+# def plot_ssp(raw):
     # something
 
 
@@ -160,22 +206,23 @@ tasks = [json_file.get_entities()['task'] for json_file in json_files]
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
 raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
-#start_i = 15
-raw_files_paths = raw_files_paths[0:2]
+# start_i = 15
+raw_files_paths = raw_files_paths
 
 for i, raw_file_path in enumerate(raw_files_paths):
-    #i = i+start_i
-    raw = mne.io.read_raw_fif(raw_files_paths[0], preload=True, verbose=False)
+    # i = i+start_i
+    raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
     path_savefile = data_deriv_dir / template.format(subject=subjects[i],
                                                      session=sessions[i],
                                                      task=tasks[i])
     path_savefile.parent.mkdir(parents=True, exist_ok=True)
     overwrite = True
-    # To avoid any filter effects add chunk to the end of the trial
-    raw = increase_rec_time(raw, t=30)
 
-    # Cut-off until 20 seconds before video starts
-    # something
+    # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
+    # too long part before event starts
+    raw = set_annot_from_events(raw)
+    raw = increase_raw_length(raw, t=30)
+    # raw = decrease_raw_length(raw, events, t_before_event=30)
 
     # Basic preprocessing
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
@@ -193,31 +240,29 @@ for i, raw_file_path in enumerate(raw_files_paths):
     raw = downsample(raw, target_fs=250)
 
     # ECG/EOG artifacts removal
-    eog_chs = find_eog_chs(raw)
-    if eog_chs:
-        [eog_projs_source1, eog_projs_source2], [eog_events_source1, eog_events_source2] = fit_ssp_eog(raw, eog_chs)
+    eog_chs = find_chs(raw, ch_type='EOG')
+    ecg_chs = find_chs(raw, ch_type='ECG')
+    if eog_chs and ecg_chs:
+        raw = ssp_routine(raw, eog_chs=eog_chs, ecg_chs=ecg_chs)
     else:
-        ica = fit_ica(raw, h_freq=1, savefile=str(path_savefile) + '_ica.fif')
-        ics = find_ics_iteratively(raw, ica, savefile=str(path_savefile) + '_ics.txt')
-        raw = apply_ica(raw, ica, ics, savefile=str(path_savefile) + '_applied_ICA_meg.fif')
-
+        raw = ica_routine(raw)
 
     # continue the pipeline ->
 
 # TODO-MUST-HAVE-PREPROCESSING:
-## check for EOG&ECG channels
-## fit_ica & save ICA object
-## fit_notICA & save notICA object
-## exclude_EOG&ECG_components & save Raw
-## check the whole pipeline - make refactoring
-## *Empty_room noise
-## *Correct events function
+## decrease_raw_length()
+## function to pick only video interval
 
 # TODO-NICE-TO-HAVE:
 ## maxfilter: manuall bad_channels detection after automatic
 ## fine calibration file and crosstalk compensation file?
 ## Overwrite=False looks useles now
-## *Coordinates channels conversion for future MRI coreg (maxfiltering)
+## suppress warning about leading dot (.)
+## plotting functions for saving ICA and SSP pictures
+## make refactoring
+## *coordinates channels conversion for future MRI coreg (maxfiltering)
+## *Empty_room noise
+## *Correct events function
 
 # TODO-MUST-HAVE-ISC:
 ## Adapt ISC function for this pipeline
@@ -231,3 +276,7 @@ for i, raw_file_path in enumerate(raw_files_paths):
 #
 # heading1 = [label.split(',')[0] for label in atlas_labels]
 # heading2 = [label.split(',')[-1] for label in atlas_labels]
+
+
+# References:
+# https://mne.tools/stable/auto_tutorials/preprocessing/plot_60_maxwell_filtering_sss.html#sphx-glr-auto-tutorials-preprocessing-plot-60-maxwell-filtering-sss-py
