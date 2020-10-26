@@ -256,7 +256,8 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 ## function to pick only video interval (?)
 ## choose the best channels for ICA when there are no EOG chs (line 66)
 ## solve the infinite problem with iterative ICA (why it goes to infinity?)
-
+## check the signal manually - topoplots looks very temporal (probably because of the noise)
+## construct kind of a report to spot noisy patients (html format?)
 
 # TODO-NICE-TO-HAVE:
 ## maxfilter: manuall bad_channels detection after automatic
@@ -268,20 +269,7 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 ## *coordinates channels conversion for future MRI coreg (maxfiltering)
 ## *Empty_room noise
 ## *Correct events function
-## Filenames insdie the function to make loop cleaner
-
-# TODO-MUST-HAVE-ISC:
-## Adapt ISC function for this pipeline
-
-
-# from scipy import io
-# atlas = io.loadmat(r'E:\Egor_Levchenko\Epilepsy\code\code\atlas_brainnetome_labels.mat')
-#
-# atlas_labels = [element[0] for element in [el.tolist() for el in np.squeeze(atlas['ans']).flatten()]
-#                 if 'Right' in element[0]]
-#
-# heading1 = [label.split(',')[0] for label in atlas_labels]
-# heading2 = [label.split(',')[-1] for label in atlas_labels]
+## Filenames inside the function to make loop cleaner
 
 
 # References:
