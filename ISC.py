@@ -29,7 +29,7 @@ def train_cca(data):
     start = default_timer()
 
     C = len(data.keys())
-    print(f'train_cca - calculations started. There are {C} conditions: {data.keys()[0]}')
+    print(f'train_cca - calculations started. There are {C} conditions: {data.keys()}')
 
     gamma = 0.1
     Rw, Rb = 0, 0
@@ -155,6 +155,36 @@ def apply_cca(X, W, fs):
     return ISC, ISC_persecond, ISC_bysubject, A
 
 
+def isc_routine(data_by_group, savefile=None):
+    isc_results = dict()
+    data_train = dict(Gr1_2=np.concatenate((data_by_group['Gr1'], data_by_group['Gr2'])))
+    W, _ = train_cca(data_train)
+
+    for name, group in data_by_group.items():
+        isc_results[str(name)] = dict(zip(['ISC', 'ISC_persecond', 'ISC_bysubject', 'A'], apply_cca(group, W, 250)))
+
+    if savefile:
+        savefile.parent.mkdir(parents=True, exist_ok=True)
+        np.save(savefile, isc_results)
+
+    return W, isc_results
+
+
+def read_data(data_deriv_dir, group_i=None, vid_i=None, picks='meg'):
+    preproc_files_paths = [mne.io.read_raw_fif(raw_file_path, preload=True) for raw_file_path
+                           in data_deriv_dir.glob(f'*/*/*/*vid{vid_i}_applied_ICA_meg.fif')
+                           if str(raw_file_path).split('\\')[-4][-4] == str(group_i)]
+    data_gr_i = []
+    for file_i, gr_i_raw in enumerate(preproc_files_paths):
+        events = mne.find_events(gr_i_raw, stim_channel='STI101', verbose=False)
+        epoch = mne.Epochs(gr_i_raw, events, event_id=vid_i, tmin=0, tmax=vid_dur['vid'+str(vid_i)],
+                           baseline=None, picks=picks)
+        data_gr_i.append(epoch.get_data())
+
+    data_gr_i = np.stack(np.squeeze(data_gr_i), axis=0)
+    return data_gr_i
+
+
 # MAIN
 vid_dur = {'vid1': 380, 'vid2': 290, 'vid3': 381, 'vid4': 372}
 
@@ -163,50 +193,12 @@ data_raw_dir = proj_root / 'data_raw'
 data_bids_dir = proj_root / 'data_bids'
 data_deriv_dir = data_bids_dir / 'derivatives'
 
-vid_i = 2
-raw_files_paths = [raw_file_path for raw_file_path in data_deriv_dir.glob(f'*/*/*/*vid{vid_i}_applied_ICA_meg.fif')]
+# Read data to 3D variable and structure as a dictionary
+data_by_group = dict(Gr1=read_data(data_deriv_dir, group_i=1, vid_i=2, picks='grad'),
+                     Gr2=read_data(data_deriv_dir, group_i=2, vid_i=2, picks='grad'))
 
-# Load
-gr1_raws = [mne.io.read_raw_fif(raw_file_path, preload=True) for raw_file_path in raw_files_paths[:21]]
-gr2_raws = [mne.io.read_raw_fif(raw_file_path, preload=True) for raw_file_path in raw_files_paths[21:] if '2007' not in str(raw_file_path)]
-
-# Pick only vid2 epoch and only MEG channels
-gr1_vid2_epochs = []
-for gr1_raw in gr1_raws:
-    events = mne.find_events(gr1_raw, stim_channel='STI101', verbose=False)
-    epoch = mne.Epochs(gr1_raw, events, event_id=vid_i, tmin=0, tmax=vid_dur['vid2'], baseline=None, picks=['grad'])
-
-    gr1_vid2_epochs.append(np.squeeze(epoch.get_data()))
-
-gr2_vid2_epochs = []
-for gr2_raw in gr2_raws:
-    events = mne.find_events(gr2_raw, stim_channel='STI101', verbose=False)
-    epoch = mne.Epochs(gr2_raw, events, event_id=vid_i, tmin=0, tmax=vid_dur['vid2'], baseline=None, picks=['grad'])
-
-    gr2_vid2_epochs.append(np.squeeze(epoch.get_data()))
-
-gr1_data_3d = np.stack(gr1_vid2_epochs)
-gr2_data_3d = np.stack(gr2_vid2_epochs)
-
-X_both_cat = dict(Gr1_2=np.concatenate((gr1_data_3d[:, :, :43750], gr2_data_3d[:, :, :43750]), axis=0))
-X_both_sep = dict(Gr1=gr1_data_3d[:, :, :43750], Gr2=gr2_data_3d[:, :, :43750])
-
-np.save(str(proj_root / 'test' / 'gr1_data_3d'), gr1_data_3d)
-np.save(str(proj_root / 'test' / 'gr2_data_3d'), gr2_data_3d)
-np.save(str(proj_root / 'test' / 'X_both_cat'), X_both_cat)
-np.save(str(proj_root / 'test' / 'X_both_sep'), X_both_sep)
-
-isc_results = dict()
-[W, ISC_overall] = train_cca(X_both_cat)
-
-for name, group in X_both_sep.items():
-    print(name)
-    print(group.shape)
-    print('Seconds: ', group.shape[2]/250)
-    isc_results[str(name)] = dict(zip(['ISC', 'ISC_persecond', 'ISC_bysubject', 'A'], apply_cca(group, W, 250)))
-    print('Apply over')
-
-np.save(str(proj_root / 'test' / 'isc_results'), isc_results)
+# Run training and applying ISC routine
+W, isc_results = isc_routine(data_by_group, savefile=data_deriv_dir / 'group' / 'ISC-training.npy')
 
 
 # TODO-MUST-HAVE:
@@ -216,3 +208,5 @@ np.save(str(proj_root / 'test' / 'isc_results'), isc_results)
 ## Save in BIDS-validated format output files
 ## What type of channels should I pick?
 ## Check video duration
+## Add savefiles to train_cca and apply_cca
+## Check how to save group files in BIDS valid format
