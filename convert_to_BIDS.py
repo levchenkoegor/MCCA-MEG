@@ -4,6 +4,7 @@ from pathlib import Path
 import mne
 import mne_bids
 import pandas as pd
+import sys
 
 #import dicom2nifti
 #dicom2nifti.dicom_series_to_nifti(proj_root / 'MRI_scans' / 'kopytin_grigory' / 'DICOM',
@@ -12,6 +13,8 @@ import pandas as pd
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
 data_bids_dir = proj_root / 'data_bids'
+
+sys.stdout = open(data_raw_dir / 'log_convert-to-BIDS', 'w')
 
 subj_fullnames = [os.listdir(directory) for directory in [data_raw_dir / 'Group1', data_raw_dir / 'Group2']]
 
@@ -39,7 +42,7 @@ for raw_file_path in raw_files_paths:
                                                 session=date_record,
                                                 task=task_name)
     try:
-        mne_bids.write_raw_bids(raw=raw_file, bids_basename=bids_filename, bids_root=data_bids_dir, verbose=False,
+        mne_bids.write_raw_bids(raw=raw_file, bids_basename=bids_filename, bids_root=data_bids_dir, verbose=True,
                                 anonymize={'daysback': 40000, 'keep_his': False}, overwrite=True)
     except AttributeError:
         continue
@@ -47,9 +50,9 @@ for raw_file_path in raw_files_paths:
 df_subj_bids_codes = pd.DataFrame.from_dict(subj_bids_codes, orient='index')
 df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 
+sys.stdout.close()
+
 # TODO:
 ## Solve problem with AttributeError for 5 subjects
-## Add logging
 ## MRI data: from DICOM to NIFTI to BIDS
 ## Validate the whole dataset
-## Should I downsample raw_data and then save to BIDS (for saving memory storage)?
