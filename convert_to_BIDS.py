@@ -1,14 +1,10 @@
 import os
+import sys
 from pathlib import Path
 
 import mne
 import mne_bids
 import pandas as pd
-import sys
-
-#import dicom2nifti
-#dicom2nifti.dicom_series_to_nifti(proj_root / 'MRI_scans' / 'kopytin_grigory' / 'DICOM',
-#                                  proj_root / 'test_kopytin_dcm2nifti', reorient_nifti=True)
 
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
@@ -18,8 +14,8 @@ sys.stdout = open(data_raw_dir / 'log_convert-to-BIDS', 'w')
 
 subj_fullnames = [os.listdir(directory) for directory in [data_raw_dir / 'Group1', data_raw_dir / 'Group2']]
 
-subj_bids_codes = {name: bids_id+1001 for bids_id, name in enumerate(subj_fullnames[0])}
-subj_bids_codes.update({name: bids_id+2001 for bids_id, name in enumerate(subj_fullnames[1])})
+subj_bids_codes = {name: bids_id + 1001 for bids_id, name in enumerate(subj_fullnames[0])}
+subj_bids_codes.update({name: bids_id + 2001 for bids_id, name in enumerate(subj_fullnames[1])})
 
 raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
 raw_files_paths = [raw_file_path for raw_file_path in raw_files_paths if 'process' not in str(raw_file_path)]
@@ -32,7 +28,7 @@ for raw_file_path in raw_files_paths:
 
     if subj_fullname in subj_bids_codes.keys():
         subj_id = str(subj_bids_codes[subj_fullname])
-        task_name = subj_filename[-1].split('.')[0] # vid%
+        task_name = subj_filename[-1].split('.')[0]  # vid%
     else:
         subj_id = 'emptyroom'
         task_name = 'noise'
@@ -44,7 +40,7 @@ for raw_file_path in raw_files_paths:
     try:
         mne_bids.write_raw_bids(raw=raw_file, bids_basename=bids_filename, bids_root=data_bids_dir, verbose=True,
                                 anonymize={'daysback': 40000, 'keep_his': False}, overwrite=True)
-    except AttributeError:
+    except ValueError:
         continue
 
 df_subj_bids_codes = pd.DataFrame.from_dict(subj_bids_codes, orient='index')
@@ -53,6 +49,7 @@ df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 sys.stdout.close()
 
 # TODO:
-## Solve problem with AttributeError for 5 subjects
-## MRI data: from DICOM to NIFTI to BIDS
-## Validate the whole dataset
+#   Solve problem with ValueError for subj 2010 vid1
+#   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
+#   Behavioural data
+#   Validate the whole dataset
