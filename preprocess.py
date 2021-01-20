@@ -252,24 +252,25 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     # continue the pipeline ->
 
 # TODO-MUST-HAVE-PREPROCESSING:
-## decrease_raw_length()
-## function to pick only video interval (?)
-## choose the best channels for ICA when there are no EOG chs (line 66)
-## solve the infinite problem with iterative ICA (why it goes to infinity?)
-## check the signal manually - topoplots looks very temporal (probably because of the noise)
-## construct kind of a report to spot noisy patients (html format?)
+#   decrease_raw_length()
+#   function to pick only video interval (?)
+#   choose the best channels for ICA when there are no EOG chs (line 66)
+#   solve the infinite problem with iterative ICA (why it goes to infinity?)
+#   check the signal manually - topoplots looks very temporal (probably because of the noise)
+#   construct kind of a report to spot noisy patients (html format?)
+#   degrees of freedom for number of PCA components based on Kaisu Lankien
 
 # TODO-NICE-TO-HAVE:
-## maxfilter: manuall bad_channels detection after automatic
-## fine calibration file and crosstalk compensation file?
-## Overwrite=False looks useles now
-## suppress warning about leading dot (.)
-## plotting functions for saving ICA and SSP pictures
-## make refactoring
-## *coordinates channels conversion for future MRI coreg (maxfiltering)
-## *Empty_room noise
-## *Correct events function
-## Filenames inside the function to make loop cleaner
+#   maxfilter: manuall bad_channels detection after automatic
+#   fine calibration file and crosstalk compensation file?
+#   Overwrite=False looks useles now
+#   suppress warning about leading dot (.)
+#   plotting functions for saving ICA and SSP pictures
+#   make refactoring
+#   *coordinates channels conversion for future MRI coreg (maxfiltering)
+#   *Empty_room noise
+#   *Correct events function
+#   Filenames inside the function to make loop cleaner
 
 
 # References:

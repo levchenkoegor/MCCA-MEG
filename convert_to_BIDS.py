@@ -5,12 +5,13 @@ from pathlib import Path
 import mne
 import mne_bids
 import pandas as pd
+import numpy as np
 
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
-data_bids_dir = proj_root / 'data_bids'
+data_bids_dir = proj_root / 'data_bids_test'
 
-sys.stdout = open(data_raw_dir / 'log_convert-to-BIDS', 'w')
+#sys.stdout = open(data_raw_dir / 'log_convert-to-BIDS', 'w')
 
 subj_fullnames = [os.listdir(directory) for directory in [data_raw_dir / 'Group1', data_raw_dir / 'Group2']]
 
@@ -20,36 +21,43 @@ subj_bids_codes.update({name: bids_id + 2001 for bids_id, name in enumerate(subj
 raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
 raw_files_paths = [raw_file_path for raw_file_path in raw_files_paths if 'process' not in str(raw_file_path)]
 
-for raw_file_path in raw_files_paths:
-    raw_file = mne.io.read_raw_fif(str(raw_file_path))
+mri_paths = np.concatenate([list(data_raw_dir.glob('../MRI_scans/**/NIFTI/'+reg_exp)) for reg_exp in
+                            ['*_sT1W_3D_*.nii', '*t1_*_sag_*iso.nii',  '*T1_Cube.nii',
+                             '*FSPGR.nii', '*t1_tse_sag_3mm.nii']])
+mri_subjnames = [mri_path.parts[-3] for mri_path in mri_paths]
 
-    subj_filename = str(raw_file_path).split('\\')[-1].split('_')
-    subj_fullname = '_'.join(subj_filename[:2])
+for raw_file_path in raw_files_paths[20:]:
+    raw_meg = mne.io.read_raw_fif(raw_file_path)
+
+    subj_fullname = raw_file_path.parts[-3]
 
     if subj_fullname in subj_bids_codes.keys():
         subj_id = str(subj_bids_codes[subj_fullname])
-        task_name = subj_filename[-1].split('.')[0]  # vid%
+        task_name = raw_files_paths[30].parts[-1].split('.')[0][-4:]  # vid%
     else:
         subj_id = 'emptyroom'
         task_name = 'noise'
 
-    date_record = str(raw_file.info['meas_date']).split(' ')[0].replace('-', '')
-    bids_filename = mne_bids.make_bids_basename(subject=subj_id,
-                                                session=date_record,
-                                                task=task_name)
-    try:
-        mne_bids.write_raw_bids(raw=raw_file, bids_basename=bids_filename, bids_root=data_bids_dir, verbose=True,
-                                anonymize={'daysback': 40000, 'keep_his': False}, overwrite=True)
-    except ValueError:
-        continue
+    date_record = str(raw_meg.info['meas_date']).split(' ')[0].replace('-', '')
+    meg_bids_path = mne_bids.BIDSPath(subject=subj_id, session=date_record, task=task_name,
+                                      root=data_bids_dir)
+    mri_bids_path = mne_bids.BIDSPath(subject=subj_id, session=date_record,
+                                      root=data_bids_dir)
+
+    mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path, verbose=True,
+                            anonymize={'daysback': 40000}, overwrite=True)
+
+    mri_presence = mri_subjnames.count(subj_fullname)
+    if mri_presence:
+        mri_path_i = mri_subjnames.index(subj_fullname)
+        mne_bids.write_anat(t1w=mri_paths[mri_path_i], bids_path=mri_bids_path, raw=raw_meg, overwrite=True)
+        print(f'{subj_fullname} has MRI file. Path to MRI file: {mri_paths[mri_path_i]}')
 
 df_subj_bids_codes = pd.DataFrame.from_dict(subj_bids_codes, orient='index')
 df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 
-sys.stdout.close()
+#sys.stdout.close()
 
 # TODO:
-#   Solve problem with ValueError for subj 2010 vid1
-#   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
-#   Behavioural data
+#   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS: done, but need to save to BIDS format
 #   Validate the whole dataset

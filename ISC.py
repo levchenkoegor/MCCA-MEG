@@ -170,10 +170,11 @@ def isc_routine(data_by_group, savefile=None):
     return W, isc_results
 
 
-def read_data(data_deriv_dir, group_i=None, vid_i=None, picks='meg'):
+def read_data(data_deriv_dir, group_i=None, vid_i=None, picks='grad'):
     preproc_files_paths = [mne.io.read_raw_fif(raw_file_path, preload=True) for raw_file_path
                            in data_deriv_dir.glob(f'*/*/*/*vid{vid_i}_applied_ICA_meg.fif')
                            if str(raw_file_path).split('\\')[-4][-4] == str(group_i)]
+
     data_gr_i = []
     for file_i, gr_i_raw in enumerate(preproc_files_paths):
         events = mne.find_events(gr_i_raw, stim_channel='STI101', verbose=False)
@@ -197,16 +198,15 @@ data_deriv_dir = data_bids_dir / 'derivatives'
 data_by_group = dict(Gr1=read_data(data_deriv_dir, group_i=1, vid_i=2, picks='grad'),
                      Gr2=read_data(data_deriv_dir, group_i=2, vid_i=2, picks='grad'))
 
-# Run training and applying ISC routine
-W, isc_results = isc_routine(data_by_group, savefile=data_deriv_dir / 'group' / 'ISC-training.npy')
+W, isc_results = isc_routine(data_by_group, savefile=data_deriv_dir / 'group_test' / 'ISC-training.npy')
 
 
 # TODO-MUST-HAVE:
-## Check if get_data() return channels in the same order between patients
-## Refactor loops and lists - too many repeats of myself
-## PCA before CCA?
-## Save in BIDS-validated format output files
-## What type of channels should I pick?
-## Check video duration
-## Add savefiles to train_cca and apply_cca
-## Check how to save group files in BIDS valid format
+#   Check if get_data() return channels in the same order between patients
+#   Refactor loops and lists - too many repeats of myself
+#   PCA before CCA?
+#   Save in BIDS-validated format output files
+#   What type of channels should I pick?
+#   Check video duration
+#   Add savefiles to train_cca and apply_cca
+#   Check how to save group files in BIDS valid format
