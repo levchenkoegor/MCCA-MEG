@@ -190,25 +190,25 @@ def read_data(data_deriv_dir, group_i=None, vid_i=None, picks='grad'):
     data_gr_i = np.stack(np.squeeze(data_gr_i), axis=0)
     return data_gr_i
 
-# PCA
 
-def pca(data,comps=60):
+# PCA
+def pca(data, comps=60):
     # Data should be a dictionary with keys Gr1 and Gr2
     # For each key, the corresponding values are stored in a 3d array
     # N subjects x D channels x T time samples
-    pca_data={'Gr1':None,'Gr2':None}
+    pca_data = {'Gr1': None, 'Gr2': None}
     os.mkdir('PCA')
-    fig_counter=0
-    for group in ['Gr1','Gr2']:
-        k=data[group]
-        reduced_data=np.empty([k.shape[0],comps,k.shape[2]])
+    fig_counter = 0
+    for group in ['Gr1', 'Gr2']:
+        k = data[group]
+        reduced_data = np.empty([k.shape[0], comps, k.shape[2]])
 
         for i in range(k.shape[0]):
-            r=k[i,:,:].transpose()
-            x=StandardScaler().fit_transform(r)
+            r = k[i, :, :].transpose()
+            x = StandardScaler().fit_transform(r)
             Pca = PCA(n_components=comps)
             principalComponents = Pca.fit_transform(x)
-            reduced_data[i,:,:]=principalComponents.transpose()
+            reduced_data[i, :, :] = principalComponents.transpose()
 
             # visualization
             exp_var_cumul = np.cumsum(Pca.explained_variance_ratio_)
@@ -219,7 +219,8 @@ def pca(data,comps=60):
             pyplot.xlabel('# Components')
             pyplot.ylabel('Explained Variance')
             pyplot.savefig('PCA/group_'+str(group)+'_sub'+str(i+1)+'.png')
-        pca_data[group]=reduced_data
+
+        pca_data[group] = reduced_data
     return pca_data
 
 
