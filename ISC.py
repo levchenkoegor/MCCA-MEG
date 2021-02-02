@@ -5,6 +5,11 @@ import mne
 import numpy as np
 from scipy.linalg import eigh
 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from matplotlib import pyplot
+import os
+
 
 def train_cca(data):
     """Run Correlated Component Analysis on your training data.
@@ -186,6 +191,39 @@ def read_data(data_deriv_dir, group_i=None, vid_i=None, picks='grad'):
     return data_gr_i
 
 
+# PCA
+def pca(data, comps=60):
+    # Data should be a dictionary with keys Gr1 and Gr2
+    # For each key, the corresponding values are stored in a 3d array
+    # N subjects x D channels x T time samples
+    pca_data = {'Gr1': None, 'Gr2': None}
+    os.mkdir('PCA')
+    fig_counter = 0
+    for group in ['Gr1', 'Gr2']:
+        k = data[group]
+        reduced_data = np.empty([k.shape[0], comps, k.shape[2]])
+
+        for i in range(k.shape[0]):
+            r = k[i, :, :].transpose()
+            x = StandardScaler().fit_transform(r)
+            Pca = PCA(n_components=comps)
+            principalComponents = Pca.fit_transform(x)
+            reduced_data[i, :, :] = principalComponents.transpose()
+
+            # visualization
+            exp_var_cumul = np.cumsum(Pca.explained_variance_ratio_)
+            fig_counter=fig_counter+1
+            pyplot.figure(fig_counter)
+            pyplot.plot(exp_var_cumul)
+            # pyplot.show()
+            pyplot.xlabel('# Components')
+            pyplot.ylabel('Explained Variance')
+            pyplot.savefig('PCA/group_'+str(group)+'_sub'+str(i+1)+'.png')
+
+        pca_data[group] = reduced_data
+    return pca_data
+
+
 # MAIN
 vid_dur = {'vid1': 380, 'vid2': 290, 'vid3': 381, 'vid4': 372}
 
@@ -199,6 +237,7 @@ data_by_group = dict(Gr1=read_data(data_deriv_dir, group_i=1, vid_i=2, picks='gr
                      Gr2=read_data(data_deriv_dir, group_i=2, vid_i=2, picks='grad'))
 
 W, isc_results = isc_routine(data_by_group, savefile=data_deriv_dir / 'group_test' / 'ISC-training.npy')
+# W, isc_results = isc_routine(pca_data, savefile=data_deriv_dir / 'group_test' / 'ISC-training.npy')
 
 
 # TODO-MUST-HAVE:
