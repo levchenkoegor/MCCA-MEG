@@ -29,28 +29,28 @@ raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
 #                              '*FSPGR.nii', '*t1_tse_sag_3mm.nii']])
 # mri_subjnames = [mri_path.parts[-3] for mri_path in mri_paths]
 
-for raw_file_path in raw_files_paths:
+for raw_file_path in raw_files_paths[20:]:
     raw_meg = mne.io.read_raw_fif(raw_file_path)
 
     subj_fullname = raw_file_path.parts[-3]  # subject fullname or 'empty_room'
 
     if subj_fullname in sub_id_name.keys():
         subj_id = str(sub_id_name[subj_fullname])
-        task_name = raw_files_paths[30].parts[-1].split('.')[0][-4:]  # vid%
+        task_name = raw_file_path.parts[-1].split('.')[0][-4:]  # vid%
     else:
         subj_id = 'emptyroom'
         task_name = 'noise'
 
     date_record = str(raw_meg.info['meas_date']).split(' ')[0].replace('-', '')
-    meg_bids_path = mne_bids.BIDSPath(subject=subj_id, session=date_record,
-                                      task=task_name, root=data_bids_dir)
+    meg_bids_path = mne_bids.BIDSPath(subject=subj_id, session=date_record, task=task_name,
+                                      root=data_bids_dir)
 
     # mri_bids_path = mne_bids.BIDSPath(subject=subj_id, session=date_record,
     #                                   root=data_bids_dir)
     #
 
-    mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path, verbose=True,
-                            anonymize={'daysback': 40000}, overwrite=True)
+    mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path,
+                            anonymize={'daysback': 40000}, overwrite=True, verbose=True)
 
     # mri_presence = mri_subjnames.count(subj_fullname)
     # if mri_presence:
@@ -67,4 +67,5 @@ print(f'Elapsed time - {elapsed_time}')
 
 # TODO:
 #   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
-#   Validate the whole dataset
+#   Make code more readable (example, line 35, 39)
+#   Validate the whole dataset (problem with `split` suffix - issues/731
