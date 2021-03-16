@@ -1,4 +1,5 @@
 import os
+import time
 #import sys
 from pathlib import Path
 
@@ -6,6 +7,9 @@ import mne
 import mne_bids
 import pandas as pd
 #import numpy as np
+
+
+t = time.process_time()  # measure time of script execution
 
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
@@ -57,6 +61,8 @@ for raw_file_path in raw_files_paths:
 df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index')
 df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
 
+elapsed_time = time.process_time() - t
+print(f'Elapsed time - {elapsed_time}')
 #sys.stdout.close()
 
 # TODO:
