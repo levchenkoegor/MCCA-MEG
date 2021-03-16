@@ -29,7 +29,7 @@ raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
 #                              '*FSPGR.nii', '*t1_tse_sag_3mm.nii']])
 # mri_subjnames = [mri_path.parts[-3] for mri_path in mri_paths]
 
-for raw_file_path in raw_files_paths[20:]:
+for raw_file_path in raw_files_paths:
     raw_meg = mne.io.read_raw_fif(raw_file_path)
 
     subj_fullname = raw_file_path.parts[-3]  # subject fullname or 'empty_room'
