@@ -1,19 +1,17 @@
 import os
 import time
-#import sys
 from pathlib import Path
 
 import mne
 import mne_bids
 import pandas as pd
-#import numpy as np
-
 
 t = time.process_time()  # measure time of script execution
 
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
 data_bids_dir = proj_root / 'data_bids_test2'
+data_bids_dir.mkdir(exist_ok=True)
 
 #sys.stdout = open(data_raw_dir / 'log_convert-to-BIDS', 'w')
 
@@ -67,5 +65,6 @@ print(f'Elapsed time - {elapsed_time}')
 
 # TODO:
 #   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
+#   Validate the whole dataset with MRI scans
 #   Make code more readable (example, line 35, 39)
-#   Validate the whole dataset (problem with `split` suffix - issues/731
+#   Save log file (probably to derivatives?)
