@@ -7,6 +7,8 @@ dependencies:
   - matplotlib=3.3.2
   - pandas=1.1.1
   - scikit-learn=0.24.0
-  - conda-forge::mne=0.21.0
+  - conda-forge::mne=0.22.0
   - conda-forge::mne-bids=0.6
-  - conda-forge::dcm2niix=1.0.20201224
+#  - conda-forge::dcm2niix=1.0.20201224
+#  - pip:
+#    - pybids==0.12.3
