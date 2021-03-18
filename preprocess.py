@@ -202,19 +202,16 @@ data_bids_dir = proj_root / 'data_bids_test2'
 data_deriv_dir = data_bids_dir / 'derivatives'
 
 layout = BIDSLayout(data_bids_dir, validate=True)
-json_files = layout.get(suffix='meg', extension='json')
-
-subjects = [json_file.get_entities()['subject'] for json_file in json_files]
-sessions = [json_file.get_entities()['session'] for json_file in json_files]
-tasks = [json_file.get_entities()['task'] for json_file in json_files]
+subjects = layout.get_subjects()
 
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
-raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
-raw_files_paths_vid2 = [raw_file_path for raw_file_path in raw_files_paths if 'vid2' in str(raw_file_path)]
-raw_files_paths_vid2_i = [i for i, raw_file_path in enumerate(raw_files_paths) if 'vid2' in str(raw_file_path)]
-#start_i = 9
-#raw_files_paths = raw_files_paths[start_i:]
+for subject in subjects[:1]:  # test on 1 subj at first
+    meg_files_subj = layout.get(subject=subject, suffix='meg', extension='fif')  # 4 files per subj
+    for meg_file_subj in meg_files_subj:
+        session = meg_file_subj.get_entities()['session']
+        task = meg_file_subj.get_entities()['task']
+        print(f'sub-{subject}_session-{session}_task-{task} is calculating...')
 
 for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     #i = i+start_i
