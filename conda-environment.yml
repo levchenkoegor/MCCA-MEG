@@ -10,5 +10,5 @@ dependencies:
   - conda-forge::mne=0.22.0
   - conda-forge::mne-bids=0.6
 #  - conda-forge::dcm2niix=1.0.20201224
-#  - pip:
-#    - pybids==0.12.3
+  - pip:
+    - pybids==0.12.3
