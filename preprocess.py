@@ -213,40 +213,38 @@ for subject in subjects[:1]:  # test on 1 subj at first
         task = meg_file_subj.get_entities()['task']
         print(f'sub-{subject}_session-{session}_task-{task} is calculating...')
 
-for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
-    #i = i+start_i
-    print(f'{i}, sub-{subjects[i]}_task-{tasks[i]} is calculating...')
-    raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
-    path_savefile = data_deriv_dir / template.format(subject=subjects[i],
-                                                     session=sessions[i],
-                                                     task=tasks[i])
-    path_savefile.parent.mkdir(parents=True, exist_ok=True)
+        # -> continue here
+        raw = mne.io.read_raw_fif(meg_file_subj, preload=True, verbose=False)
+        path_savefile = data_deriv_dir / template.format(subject=subject,
+                                                         session=session,
+                                                         task=task)
+        path_savefile.parent.mkdir(parents=True, exist_ok=True)
 
-    # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
-    # too long part before event starts
-    raw = set_annot_from_events(raw)
-    raw = increase_raw_length(raw, t=30)
-    # raw = decrease_raw_length(raw, events, t_before_event=30)
+        # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
+        # too long part before event starts
+        raw = set_annot_from_events(raw)
+        raw = increase_raw_length(raw, t=30)
+        # raw = decrease_raw_length(raw, events, t_before_event=30)
 
-    # Basic preprocessing
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
-    raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
-                           savefile=str(path_savefile) + '_linear_filtering_meg.fif')
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
+        # Basic preprocessing
+        draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
+        raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
+                               savefile=str(path_savefile) + '_linear_filtering_meg.fif')
+        draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
-    # Maxwell filtering:
-    raw = find_bad_ch_maxwell(raw)
-    head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
-    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
-                            savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
+        # Maxwell filtering:
+        raw = find_bad_ch_maxwell(raw)
+        head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
+        raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
+                                savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
 
-    # Downsample
-    raw = downsample(raw, target_fs=250)
+        # Downsample
+        raw = downsample(raw, target_fs=250)
 
-    # ECG/EOG artifacts removal
-    raw = ica_routine(raw)
+        # ECG/EOG artifacts removal
+        raw = ica_routine(raw)
 
-    # continue the pipeline ->
+        # continue the pipeline ->
 
 # TODO-MUST-HAVE-PREPROCESSING:
 #   decrease_raw_length()
