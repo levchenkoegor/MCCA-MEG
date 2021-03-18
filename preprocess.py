@@ -198,7 +198,7 @@ def chpi_find_head_pos(raw, savefile=None, verbose=False):
 # MAIN
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
-data_bids_dir = proj_root / 'data_bids'
+data_bids_dir = proj_root / 'data_bids_test2'
 data_deriv_dir = data_bids_dir / 'derivatives'
 
 layout = BIDSLayout(data_bids_dir, validate=True)
