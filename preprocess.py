@@ -256,9 +256,9 @@ for subject in subjects[:1]:  # test on 1 subj at first
 #   degrees of freedom for number of PCA components based on Kaisu Lankien
 
 # TODO-NICE-TO-HAVE:
-#   maxfilter: manuall bad_channels detection after automatic
+#   maxfilter: manually bad_channels detection after automatic
 #   fine calibration file and crosstalk compensation file?
-#   Overwrite=False looks useles now
+#   Overwrite=False looks useless now
 #   suppress warning about leading dot (.)
 #   plotting functions for saving ICA and SSP pictures
 #   make refactoring
