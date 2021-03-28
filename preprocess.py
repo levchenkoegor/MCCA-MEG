@@ -179,7 +179,7 @@ def find_bad_ch_maxwell(raw, visualization=True, savefile=None):
                                                                          verbose=False)
     raw.info['bads'] = raw.info['bads'] + noisy_chs + flat_chs
 
-    if visualization:
+    if visualization==True:
         ch_type = 'grad'
         ch_subset = auto_scores['ch_types'] == ch_type
         ch_names = auto_scores['ch_names'][ch_subset]
