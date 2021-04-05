@@ -64,6 +64,10 @@ print(f'Elapsed time - {elapsed_time}')
 #sys.stdout.close()
 
 # TODO:
+#   Add cross-talk and fine-calibration files
+#   Validate dataset
+#   Add behavioural data
+#   Validate dataset
 #   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
 #   Validate the whole dataset with MRI scans
 #   Make code more readable (example, line 35, 39)
