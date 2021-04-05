@@ -21,6 +21,8 @@ sub_id_name = {name: bids_id + 1001 for bids_id, name in enumerate(subj_fullname
 sub_id_name.update({name: bids_id + 2001 for bids_id, name in enumerate(subj_fullnames[1])})  # group2
 
 raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
+ct_file = data_raw_dir / 'ct_fc_files' / 'ct_sparse.fif'
+fc_files = list((data_raw_dir / 'ct_fc_files').glob('*.dat'))
 
 # mri_paths = np.concatenate([list(data_raw_dir.glob('../MRI_scans/**/NIFTI/'+reg_exp)) for reg_exp in
 #                             ['*_sT1W_3D_*.nii', '*t1_*_sag_*iso.nii',  '*T1_Cube.nii',
@@ -49,6 +51,11 @@ for raw_file_path in raw_files_paths:
 
     mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path,
                             anonymize={'daysback': 40000}, overwrite=True, verbose=True)
+    mne_bids.write_meg_crosstalk(ct_file, meg_bids_path)
+    if date_record[:4] < 2020:
+        mne_bids.write_meg_calibration(fc_files[1], meg_bids_path)
+    else:
+        mne_bids.write_meg_calibration(fc_files[0], meg_bids_path)
 
     # mri_presence = mri_subjnames.count(subj_fullname)
     # if mri_presence:
