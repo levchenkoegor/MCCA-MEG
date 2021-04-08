@@ -20,9 +20,11 @@ subj_fullnames = [os.listdir(directory) for directory in [data_raw_dir / 'Group1
 sub_id_name = {name: bids_id + 1001 for bids_id, name in enumerate(subj_fullnames[0])}  # group1
 sub_id_name.update({name: bids_id + 2001 for bids_id, name in enumerate(subj_fullnames[1])})  # group2
 
-raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
+raw_files_paths = sorted(list(data_raw_dir.glob('**/**/**/*.fif')))[1:]  # without cross-talk file
+
 ct_file = data_raw_dir / 'ct_fc_files' / 'ct_sparse.fif'
-fc_files = list((data_raw_dir / 'ct_fc_files').glob('*.dat'))
+fc_files = {'Before_sept2019': data_raw_dir / 'ct_fc_files' / 'sss_cal_before_sept2019.dat',
+            'Current': data_raw_dir / 'ct_fc_files' / 'sss_cal.dat'}
 
 # mri_paths = np.concatenate([list(data_raw_dir.glob('../MRI_scans/**/NIFTI/'+reg_exp)) for reg_exp in
 #                             ['*_sT1W_3D_*.nii', '*t1_*_sag_*iso.nii',  '*T1_Cube.nii',
