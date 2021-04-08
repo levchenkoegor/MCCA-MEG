@@ -53,11 +53,13 @@ for raw_file_path in raw_files_paths:
 
     mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path,
                             anonymize={'daysback': 40000}, overwrite=True, verbose=True)
-    mne_bids.write_meg_crosstalk(ct_file, meg_bids_path)
-    if date_record[:4] < 2020:
-        mne_bids.write_meg_calibration(fc_files[1], meg_bids_path)
-    else:
-        mne_bids.write_meg_calibration(fc_files[0], meg_bids_path)
+
+    if subj_id != 'emptyroom':
+        mne_bids.write_meg_crosstalk(ct_file, meg_bids_path)
+        if int(date_record[:4]) < 2020:
+            mne_bids.write_meg_calibration(fc_files['Before_sept2019'], meg_bids_path)
+        else:
+            mne_bids.write_meg_calibration(fc_files['Current'], meg_bids_path)
 
     # mri_presence = mri_subjnames.count(subj_fullname)
     # if mri_presence:
