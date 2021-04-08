@@ -67,8 +67,9 @@ for raw_file_path in raw_files_paths:
     #     mne_bids.write_anat(t1w=mri_paths[mri_path_i], bids_path=mri_bids_path, raw=raw_meg, overwrite=True)
     #     print(f'{subj_fullname} has MRI file. Path to MRI file: {mri_paths[mri_path_i]}')
 
-df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index')
-df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
+df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index').reset_index()
+df_subj_bids_codes.columns = ['Fullname', 'BIDS_id']
+df_subj_bids_codes.to_csv(data_raw_dir / 'Fullnames_BIDS-ids_subjects.csv', index=False)
 
 elapsed_time = time.process_time() - t
 print(f'Elapsed time - {elapsed_time}')
