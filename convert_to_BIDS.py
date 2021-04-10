@@ -20,7 +20,11 @@ subj_fullnames = [os.listdir(directory) for directory in [data_raw_dir / 'Group1
 sub_id_name = {name: bids_id + 1001 for bids_id, name in enumerate(subj_fullnames[0])}  # group1
 sub_id_name.update({name: bids_id + 2001 for bids_id, name in enumerate(subj_fullnames[1])})  # group2
 
-raw_files_paths = list(data_raw_dir.glob('**/**/**/*.fif'))
+raw_files_paths = sorted(list(data_raw_dir.glob('**/**/**/*.fif')))[1:]  # without cross-talk file
+
+ct_file = data_raw_dir / 'ct_fc_files' / 'ct_sparse.fif'
+fc_files = {'Before_sept2019': data_raw_dir / 'ct_fc_files' / 'sss_cal_before_sept2019.dat',
+            'Current': data_raw_dir / 'ct_fc_files' / 'sss_cal.dat'}
 
 # mri_paths = np.concatenate([list(data_raw_dir.glob('../MRI_scans/**/NIFTI/'+reg_exp)) for reg_exp in
 #                             ['*_sT1W_3D_*.nii', '*t1_*_sag_*iso.nii',  '*T1_Cube.nii',
@@ -50,20 +54,31 @@ for raw_file_path in raw_files_paths:
     mne_bids.write_raw_bids(raw=raw_meg, bids_path=meg_bids_path,
                             anonymize={'daysback': 40000}, overwrite=True, verbose=True)
 
+    if subj_id != 'emptyroom':
+        mne_bids.write_meg_crosstalk(ct_file, meg_bids_path)
+        if int(date_record[:4]) < 2020:
+            mne_bids.write_meg_calibration(fc_files['Before_sept2019'], meg_bids_path)
+        else:
+            mne_bids.write_meg_calibration(fc_files['Current'], meg_bids_path)
+
     # mri_presence = mri_subjnames.count(subj_fullname)
     # if mri_presence:
     #     mri_path_i = mri_subjnames.index(subj_fullname)
     #     mne_bids.write_anat(t1w=mri_paths[mri_path_i], bids_path=mri_bids_path, raw=raw_meg, overwrite=True)
     #     print(f'{subj_fullname} has MRI file. Path to MRI file: {mri_paths[mri_path_i]}')
 
-df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index')
-df_subj_bids_codes.to_csv(data_raw_dir / 'BIDS_subjects_codes.csv')
+df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index').reset_index()
+df_subj_bids_codes.columns = ['Fullname', 'BIDS_id']
+df_subj_bids_codes.to_csv(data_raw_dir / 'Fullnames_BIDS-ids_subjects.csv', index=False)
 
 elapsed_time = time.process_time() - t
 print(f'Elapsed time - {elapsed_time}')
 #sys.stdout.close()
 
 # TODO:
+#   Should I add cross-talk and fine calibrations files to 'emptyroom'?
+#   Add behavioural data
+#   Validate dataset
 #   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
 #   Validate the whole dataset with MRI scans
 #   Make code more readable (example, line 35, 39)
