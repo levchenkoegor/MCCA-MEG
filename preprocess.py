@@ -277,12 +277,11 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     # Basic preprocessing
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
-    raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
+    raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
                            savefile=str(path_savefile) + '_linear_filtering_meg.fif')
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
     # Maxwell filtering:
-    raw = find_bad_ch_maxwell(raw, visualization=True, savefile=str(path_savefile) + '_bad_channels.png')
+    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, savefile=str(path_savefile) + '_bad_channels.png')
     head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
     raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
                             savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
@@ -292,6 +291,8 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     # ECG/EOG artifacts removal
     raw = ica_routine(raw)
+
+    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
     # continue the pipeline ->
 
