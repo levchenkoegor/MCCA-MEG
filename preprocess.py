@@ -172,11 +172,13 @@ def ssp_routine(raw, eog_chs, ecg_chs):
 
 
 # Maxwell filtering
-def find_bad_ch_maxwell(raw, visualization=True, savefile=None):
+def find_bad_ch_maxwell(raw, visualization=True, savefile=None, crosstalk_file=None, fine_cal_file=None):
     noisy_chs, flat_chs, auto_scores = mne.preprocessing.find_bad_channels_maxwell(raw,
-                                                                         min_count=3,
-                                                                         return_scores=True,
-                                                                         verbose=False)
+                                                                                   cross_talk = crosstalk_file,
+                                                                                   calibration = fine_cal_file,
+                                                                                   min_count=3,
+                                                                                   return_scores=True,
+                                                                                   verbose=False)
     raw.info['bads'] = raw.info['bads'] + noisy_chs + flat_chs
 
     if visualization==True:
@@ -222,8 +224,9 @@ def find_bad_ch_maxwell(raw, visualization=True, savefile=None):
     return raw
 
 
-def maxwell_filtering(raw, st_duration=10, head_pos=None, savefile=None, overwrite=True, verbose=False):
+def maxwell_filtering(raw, st_duration=10, head_pos=None, savefile=None, overwrite=True, crosstalk_file=None, fine_cal_file=None, verbose=False):
     raw_tsss = mne.preprocessing.maxwell_filter(raw, st_duration=st_duration,
+                                                cross_talk=crosstalk_file, calibration=fine_cal_file,
                                                 head_pos=head_pos, verbose=verbose)
     if savefile:
         raw_tsss.save(savefile, overwrite=overwrite)
@@ -234,6 +237,7 @@ def chpi_find_head_pos(raw, savefile=None, verbose=False):
     chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw, verbose=verbose)
     chpi_locs = mne.chpi.compute_chpi_locs(raw.info, chpi_amplitudes, verbose=verbose)
     head_pos = mne.chpi.compute_head_pos(raw.info, chpi_locs, verbose=verbose)
+    mne.viz.plot_head_positions(head_pos, mode='traces')
     if savefile:
         mne.chpi.write_head_pos(savefile, head_pos)
     return head_pos
@@ -266,7 +270,7 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
     path_savefile = data_deriv_dir / template.format(subject=subjects[i],
                                                      session=sessions[i],
-                                                     task=tasks[i])
+                                                     task='vid2')
     path_savefile.parent.mkdir(parents=True, exist_ok=True)
 
     # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
@@ -281,9 +285,11 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
                            savefile=str(path_savefile) + '_linear_filtering_meg.fif')
 
     # Maxwell filtering:
-    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, savefile=str(path_savefile) + '_bad_channels.png')
+    crosstalk_file=[x for x in os.listdir(raw_file_path.parent) if 'crosstalk' in str(x)][0]
+    fine_cal_file=[x for x in os.listdir(raw_file_path.parent) if 'calibration' in str(x)][0]
+    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
     head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
-    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
+    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
                             savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
 
     # Downsample
