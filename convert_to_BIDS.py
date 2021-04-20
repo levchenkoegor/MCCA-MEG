@@ -76,10 +76,11 @@ print(f'Elapsed time - {elapsed_time}')
 #sys.stdout.close()
 
 # TODO:
-#   Should I add cross-talk and fine calibrations files to 'emptyroom'?
 #   Add behavioural data
+#   Add stimuli data
 #   Validate dataset
 #   MRI data: from DICOM to NIFTI (using dcm2niix) to BIDS
 #   Validate the whole dataset with MRI scans
 #   Make code more readable (example, line 35, 39)
 #   Save log file (probably to derivatives?)
+#   Should I add cross-talk and fine calibrations files to 'emptyroom'?
