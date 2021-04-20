@@ -1,3 +1,5 @@
+import json
+import csv
 import os
 import time
 from pathlib import Path
@@ -67,9 +69,39 @@ for raw_file_path in raw_files_paths:
     #     mne_bids.write_anat(t1w=mri_paths[mri_path_i], bids_path=mri_bids_path, raw=raw_meg, overwrite=True)
     #     print(f'{subj_fullname} has MRI file. Path to MRI file: {mri_paths[mri_path_i]}')
 
+# save fullnames and bids_id
 df_subj_bids_codes = pd.DataFrame.from_dict(sub_id_name, orient='index').reset_index()
 df_subj_bids_codes.columns = ['Fullname', 'BIDS_id']
 df_subj_bids_codes.to_csv(data_raw_dir / 'Fullnames_BIDS-ids_subjects.csv', index=False)
+
+# convert questionnaire responses
+data_bids_phenotype = data_bids_dir / 'phenotype'
+data_bids_phenotype.mkdir(exist_ok=True)
+
+questionnaire = pd.read_excel(data_raw_dir / 'questionnaire_responses_raw.xls',
+                              sheet_name='Answers_cleaned', usecols='A:X')
+descriptions = pd.read_excel(data_raw_dir / 'questionnaire_responses_raw.xls',
+                             sheet_name='Columns')
+
+questionnaire.replace({"Subject name record": sub_id_name}, inplace=True)  # change fullnames to bids_id
+questionnaire.rename(columns={'Subject name record': 'participant_id'}, inplace=True)
+questionnaire.rename(columns=descriptions.set_index('Description').to_dict()['Question'], inplace=True)
+
+meta_json = {}
+for _, row in descriptions.iterrows():
+    meta_json[row['Question']] = {'Description': row['Description'],
+                                  'Levels': row['Levels']}
+
+with open(data_bids_phenotype / 'questionnaire.json', 'w', encoding='utf-8') as que_json:
+    json.dump(meta_json, que_json, indent=4, ensure_ascii=False)
+
+questionnaire.to_csv(data_bids_phenotype / 'questionnaire.tsv', sep='\t', na_rep='n/a',
+                     index=False, encoding='utf-8', quoting=csv.QUOTE_NONE)
+
+# save levels properly
+# check encoding of json files
+# filter out answers in group 2 for BYD (no text before the movie)
+# save tsv file with data with proper encoding
 
 elapsed_time = time.process_time() - t
 print(f'Elapsed time - {elapsed_time}')
