@@ -277,12 +277,11 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     # Basic preprocessing
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
-    raw = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
+    raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
                            savefile=str(path_savefile) + '_linear_filtering_meg.fif')
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
     # Maxwell filtering:
-    raw = find_bad_ch_maxwell(raw, visualization=True, savefile=str(path_savefile) + '_bad_channels.png')
+    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, savefile=str(path_savefile) + '_bad_channels.png')
     head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
     raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos,
                             savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
@@ -292,6 +291,40 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     # ECG/EOG artifacts removal
     raw = ica_routine(raw)
+
+    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
+
+    # Summarize preprocessing procedure in a report
+    freq_before = pyplot.figure(1)
+    bad_ch = pyplot.figure(2)
+    freq_after = pyplot.figure(3)
+    path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
+                                                'meg/')
+
+    report = mne.Report(verbose=True)
+    report.parse_folder(path_report, pattern='*.fif', render_bem=False)
+    report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True, open_browser=False)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(freq_before,
+                                   section='Power Spectrum Density',
+                                   captions='Before filtering',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(freq_after,
+                                   section='Power Spectrum Density',
+                                   captions='After filtering',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(bad_ch,
+                                   section='Bad Channels',
+                                   captions='Automated bad channel detection',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
 
     # continue the pipeline ->
 
