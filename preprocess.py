@@ -294,6 +294,38 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
+    # Summarize preprocessing procedure in a report
+    freq_before = pyplot.figure(1)
+    bad_ch = pyplot.figure(2)
+    freq_after = pyplot.figure(3)
+    path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
+                                                'meg/')
+
+    report = mne.Report(verbose=True)
+    report.parse_folder(path_report, pattern='*.fif', render_bem=False)
+    report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True, open_browser=False)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(freq_before,
+                                   section='Power Spectrum Density',
+                                   captions='Before filtering',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(freq_after,
+                                   section='Power Spectrum Density',
+                                   captions='After filtering',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(bad_ch,
+                                   section='Bad Channels',
+                                   captions='Automated bad channel detection',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
+
     # continue the pipeline ->
 
 # TODO-MUST-HAVE-PREPROCESSING:
