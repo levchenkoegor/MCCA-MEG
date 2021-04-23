@@ -303,7 +303,8 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     # Summarize preprocessing procedure in a report
     freq_before = pyplot.figure(1)
     bad_ch = pyplot.figure(2)
-    freq_after = pyplot.figure(3)
+    mov_comp=pyplot.figure(3)
+    freq_after = pyplot.figure(4)
     path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
                                                 'meg/')
 
@@ -329,6 +330,13 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
         report.add_figs_to_section(bad_ch,
                                    section='Bad Channels',
                                    captions='Automated bad channel detection',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(mov_comp,
+                                   section='Movement compensation',
+                                   captions='Movement compensation',
                                    replace=True)
         report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
 
