@@ -83,7 +83,7 @@ def find_ics(raw, ica, eog_chs=('MEG0521', 'MEG0921'), verbose=False):
     return all_ics
 
 
-def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
+def find_ics_iteratively(raw, ica, savefile=None, visualization=True, verbose=False):
     ics = []
 
     new_ics = True  # so that the while loop initiates at all
@@ -100,6 +100,13 @@ def find_ics_iteratively(raw, ica, savefile=None, verbose=False):
         # print(new_ics)
         ics += new_ics
         i += 1
+
+    if visualization:
+        # plot diagnostics
+        ica.plot_properties(raw, picks=ics)
+
+        # plot ICs applied to raw data, with EOG matches highlighted
+        ica.plot_sources(raw, show_scrollbars=False)
 
     if savefile:
         f = open(savefile, 'w')
@@ -304,7 +311,18 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     freq_before = pyplot.figure(1)
     bad_ch = pyplot.figure(2)
     mov_comp=pyplot.figure(3)
-    freq_after = pyplot.figure(4)
+
+    # Check how many plots have been generated (it varies depending on the No of ICs
+    fig_numbers = [x.num for x in pyplot._pylab_helpers.Gcf.get_all_fig_managers()]
+    ics=len(fig_numbers)-5
+
+    for fig in range(1,1+ics):
+        globals()['ic' + str(fig)]=pyplot.figure(fig+3) # because we have 3 other plots before ICA plots
+
+    freq_after = pyplot.figure(len(fig_numbers))
+    all_comps=pyplot.figure(len(fig_numbers)-1)
+
+
     path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
                                                 'meg/')
 
@@ -332,6 +350,21 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
                                    captions='Automated bad channel detection',
                                    replace=True)
         report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_figs_to_section(all_comps,
+                                   section='ICA',
+                                   captions='All components',
+                                   replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    for fig in range(1,ics+1):
+        with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+            report.add_figs_to_section(globals()['ic' + str(fig)],
+                                       section='ICA',
+                                       captions='Artifactual Component number'+str(fig),
+                                       replace=True)
+            report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
 
     with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
         report.add_figs_to_section(mov_comp,
