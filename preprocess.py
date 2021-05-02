@@ -192,35 +192,46 @@ def find_bad_ch_maxwell(raw, visualization=True, savefile=None, crosstalk_file=N
         ch_type = 'grad'
         ch_subset = auto_scores['ch_types'] == ch_type
         ch_names = auto_scores['ch_names'][ch_subset]
-        scores = auto_scores['scores_noisy'][ch_subset]
-        limits = auto_scores['limits_noisy'][ch_subset]
-        bins = auto_scores['bins']  # The the windows that were evaluated.
+        n_scores = auto_scores['scores_noisy'][ch_subset]
+        n_limits = auto_scores['limits_noisy'][ch_subset]
+        f_scores = auto_scores['scores_flat'][ch_subset]
+        f_limits = auto_scores['limits_flat'][ch_subset]
+        bins = auto_scores['bins']  # The windows that were evaluated.
         # We will label each segment by its start and stop time, with up to 3
         # digits before and 3 digits after the decimal place (1 ms precision).
         bin_labels = [f'{start:3.3f} – {stop:3.3f}' for start, stop in bins]
         # We store the data in a Pandas DataFrame. The seaborn heatmap function
         # we will call below will then be able to automatically assign the correct
         # labels to all axes.
-        data_to_plot = pd.DataFrame(data=scores,
+
+        # First, plot the noisy channels
+        data_to_plot_noisy = pd.DataFrame(data=n_scores,
                                     columns=pd.Index(bin_labels, name='Time (s)'),
                                     index=pd.Index(ch_names, name='Channel'))
-        # First, plot the "raw" scores.
+
         fig, ax = pyplot.subplots(1, 2, figsize=(12, 8))
-        fig.suptitle(f'Automated noisy channel detection: {ch_type}',
-                     fontsize=16, fontweight='bold')
-        sns.heatmap(data=data_to_plot, cmap='Reds', cbar_kws=dict(label='Score'),
-                    ax=ax[0])
+        fig.suptitle(f'Automated bad channel detection: {ch_type}',
+                     fontsize=13, fontweight='bold')
+        sns.heatmap(data=data_to_plot_noisy,
+                    vmin=np.nanmin(n_limits),  # bads in input data have NaN limits
+                    cmap='Reds', cbar_kws=dict(label='Score'), ax=ax[0])
         [ax[0].axvline(x, ls='dashed', lw=0.25, dashes=(25, 15), color='gray')
          for x in range(1, len(bins))]
-        ax[0].set_title('All Scores', fontweight='bold')
+        ax[0].set_title('Noisy', fontweight='bold')
+
+        # Continue with the flat channels
+        data_to_plot_flat = pd.DataFrame(data=-f_scores,
+                                    columns=pd.Index(bin_labels, name='Time (s)'),
+                                    index=pd.Index(ch_names, name='Channel'))
 
         # Now, adjust the color range to highlight segments that exceeded the limit.
-        sns.heatmap(data=data_to_plot,
-                    vmin=np.nanmin(limits),  # bads in input data have NaN limits
+        sns.heatmap(data=data_to_plot_flat,
+                    vmin=np.nanmin(-f_limits),  # bads in input data have NaN limits
                     cmap='Reds', cbar_kws=dict(label='Score'), ax=ax[1])
+
         [ax[1].axvline(x, ls='dashed', lw=0.25, dashes=(25, 15), color='gray')
          for x in range(1, len(bins))]
-        ax[1].set_title('Scores > Limit', fontweight='bold')
+        ax[1].set_title('Flat', fontweight='bold')
 
         # The figure title should not overlap with the subplots.
         fig.tight_layout(rect=[0, 0.03, 1, 0.95])
@@ -292,13 +303,13 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
                            savefile=str(path_savefile) + '_linear_filtering_meg.fif')
 
     # Maxwell filtering:
-    crosstalk_file=[x for x in os.listdir(raw_file_path.parent) if 'crosstalk' in str(x)][0]
-    fine_cal_file=[x for x in os.listdir(raw_file_path.parent) if 'calibration' in str(x)][0]
-    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
+    crosstalk_file=os.path.join(raw_file_path.parent,[x for x in os.listdir(raw_file_path.parent) if 'crosstalk' in str(x)][0])
+    fine_cal_file=os.path.join(raw_file_path.parent,[x for x in os.listdir(raw_file_path.parent) if 'calibration' in str(x)][0])
+    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=crosstalk_file, fine_cal_file=fine_cal_file, savefile=str(path_savefile) + '_bad_channels.png')
     head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
-    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
+    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=crosstalk_file, fine_cal_file=fine_cal_file,
                             savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
-
+    raw.info['bads']=raw_filtered.info['bads']
     # Downsample
     raw = downsample(raw, target_fs=250)
 
@@ -307,7 +318,7 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
 
     draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
-    # Summarize preprocessing procedure in a report
+     # Summarize preprocessing procedure in a report
     freq_before = pyplot.figure(1)
     bad_ch = pyplot.figure(2)
     mov_comp=pyplot.figure(3)
@@ -347,7 +358,8 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
     with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
         report.add_figs_to_section(bad_ch,
                                    section='Bad Channels',
-                                   captions='Automated bad channel detection',
+                                   captions='Bad channels detection',
+                                   comments='Bad channels: '+','.join(raw.info['bads']),
                                    replace=True)
         report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
 
@@ -371,7 +383,24 @@ for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
                                    section='Movement compensation',
                                    captions='Movement compensation',
                                    replace=True)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+    clean_signal = list()
+    times = [x for x in range(1,551,20)]
+    for t in times:
+        clean_signal.append(raw.plot(duration=20, n_channels=40, start=t))
+        pyplot.close(clean_signal[-1])
+
+    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+        report.add_slider_to_section(clean_signal, times,
+                                         section='Preprocessed signal',
+                                         image_format='png',
+                                         replace=True)  # can also use 'svg'
         report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
+
+
+
+
 
     # continue the pipeline ->
 
