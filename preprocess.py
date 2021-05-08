@@ -181,8 +181,8 @@ def ssp_routine(raw, eog_chs, ecg_chs):
 # Maxwell filtering
 def find_bad_ch_maxwell(raw, visualization=True, savefile=None, crosstalk_file=None, fine_cal_file=None):
     noisy_chs, flat_chs, auto_scores = mne.preprocessing.find_bad_channels_maxwell(raw,
-                                                                                   cross_talk = crosstalk_file,
-                                                                                   calibration = fine_cal_file,
+                                                                                   cross_talk=crosstalk_file,
+                                                                                   calibration=fine_cal_file,
                                                                                    min_count=3,
                                                                                    return_scores=True,
                                                                                    verbose=False)
@@ -253,127 +253,121 @@ def chpi_find_head_pos(raw, savefile=None, verbose=False):
 # MAIN
 proj_root = Path() / '..'
 data_raw_dir = proj_root / 'data_raw'
-data_bids_dir = proj_root / 'data_bids'
+data_bids_dir = proj_root / 'data_bids_test2'
 data_deriv_dir = data_bids_dir / 'derivatives'
 
 layout = BIDSLayout(data_bids_dir, validate=True)
-json_files = layout.get(suffix='meg', extension='json')
-
-subjects = [json_file.get_entities()['subject'] for json_file in json_files]
-sessions = [json_file.get_entities()['session'] for json_file in json_files]
-tasks = [json_file.get_entities()['task'] for json_file in json_files]
+subjects = layout.get_subjects()
 
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
-raw_files_paths = [raw_file_path for raw_file_path in data_bids_dir.glob('*/*/*/*.fif')]
-raw_files_paths_vid2 = [raw_file_path for raw_file_path in raw_files_paths if 'vid2' in str(raw_file_path)]
-raw_files_paths_vid2_i = [i for i, raw_file_path in enumerate(raw_files_paths) if 'vid2' in str(raw_file_path)]
-#start_i = 9
-#raw_files_paths = raw_files_paths[start_i:]
+for subject in subjects[:1]:  # test on 1 subj at first
+    # 4 files per subj
+    meg_files_subj = layout.get(subject=subject, task='vid*', extension='fif', regex_search=True)
+    for meg_file_subj in meg_files_subj:
+        session = meg_file_subj.get_entities()['session']
+        task = meg_file_subj.get_entities()['task']
+        print(f'sub-{subject}_session-{session}_task-{task} is calculating...')
 
-for i, raw_file_path in zip(raw_files_paths_vid2_i, raw_files_paths_vid2):
-    #i = i+start_i
-    print(f'{i}, sub-{subjects[i]}_task-{tasks[i]} is calculating...')
-    raw = mne.io.read_raw_fif(raw_file_path, preload=True, verbose=False)
-    path_savefile = data_deriv_dir / template.format(subject=subjects[i],
-                                                     session=sessions[i],
-                                                     task='vid2')
-    path_savefile.parent.mkdir(parents=True, exist_ok=True)
+        raw = mne.io.read_raw_fif(meg_file_subj, preload=True, verbose=False)
+        path_savefile = data_deriv_dir / template.format(subject=subject, session=session, task=task)
+        path_savefile.parent.mkdir(parents=True, exist_ok=True)
 
-    # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
-    # too long part before event starts
-    raw = set_annot_from_events(raw)
-    raw = increase_raw_length(raw, t=30)
-    # raw = decrease_raw_length(raw, events, t_before_event=30)
+        # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
+        # too long part before event starts
+        raw = set_annot_from_events(raw)
+        raw = increase_raw_length(raw, t=30)
+        # raw = decrease_raw_length(raw, events, t_before_event=30)
 
-    # Basic preprocessing
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
-    raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
-                           savefile=str(path_savefile) + '_linear_filtering_meg.fif')
+        # Basic preprocessing
+        draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
+        raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
+                                        savefile=str(path_savefile) + '_linear_filtering_meg.fif')
 
-    # Maxwell filtering:
-    crosstalk_file=[x for x in os.listdir(raw_file_path.parent) if 'crosstalk' in str(x)][0]
-    fine_cal_file=[x for x in os.listdir(raw_file_path.parent) if 'calibration' in str(x)][0]
-    raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
-    head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
-    raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
-                            savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
+        # Maxwell filtering:
+        crosstalk_file = layout.get(subject=subject, acquisition='crosstalk', extension='fif')
+        fine_cal_file = layout.get(subject=subject, acquisition='calibration', extension='fif')
+        raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
+        head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
+        raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
+                                savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
 
-    # Downsample
-    raw = downsample(raw, target_fs=250)
+        # Downsample
+        raw = downsample(raw, target_fs=250)
 
-    # ECG/EOG artifacts removal
-    raw = ica_routine(raw)
+        # ECG/EOG artifacts removal
+        raw = ica_routine(raw)
 
-    draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
+        draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
 
-    # Summarize preprocessing procedure in a report
-    freq_before = pyplot.figure(1)
-    bad_ch = pyplot.figure(2)
-    mov_comp=pyplot.figure(3)
+        # Summarize preprocessing procedure in a report
+        freq_before = pyplot.figure(1)
+        bad_ch = pyplot.figure(2)
+        mov_comp=pyplot.figure(3)
 
-    # Check how many plots have been generated (it varies depending on the No of ICs
-    fig_numbers = [x.num for x in pyplot._pylab_helpers.Gcf.get_all_fig_managers()]
-    ics=len(fig_numbers)-5
+        # Check how many plots have been generated (it varies depending on the No of ICs
+        fig_numbers = [x.num for x in pyplot._pylab_helpers.Gcf.get_all_fig_managers()]
+        ics=len(fig_numbers)-5
 
-    for fig in range(1,1+ics):
-        globals()['ic' + str(fig)]=pyplot.figure(fig+3) # because we have 3 other plots before ICA plots
+        for fig in range(1,1+ics):
+            globals()['ic' + str(fig)]=pyplot.figure(fig+3) # because we have 3 other plots before ICA plots
 
-    freq_after = pyplot.figure(len(fig_numbers))
-    all_comps=pyplot.figure(len(fig_numbers)-1)
+        freq_after = pyplot.figure(len(fig_numbers))
+        all_comps = pyplot.figure(len(fig_numbers)-1)
 
 
-    path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
-                                                'meg/')
+        path_report = data_deriv_dir / os.path.join('sub-' + str(subjects[i]) + '/', 'ses-' + str(sessions[i]) + '/',
+                                                    'meg/')
 
-    report = mne.Report(verbose=True)
-    report.parse_folder(path_report, pattern='*.fif', render_bem=False)
-    report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True, open_browser=False)
+        report = mne.Report(verbose=True)
+        report.parse_folder(path_report, pattern='*.fif', render_bem=False)
+        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True, open_browser=False)
 
-    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-        report.add_figs_to_section(freq_before,
-                                   section='Power Spectrum Density',
-                                   captions='Before filtering',
-                                   replace=True)
-        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
-
-    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-        report.add_figs_to_section(freq_after,
-                                   section='Power Spectrum Density',
-                                   captions='After filtering',
-                                   replace=True)
-        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
-
-    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-        report.add_figs_to_section(bad_ch,
-                                   section='Bad Channels',
-                                   captions='Automated bad channel detection',
-                                   replace=True)
-        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
-
-    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-        report.add_figs_to_section(all_comps,
-                                   section='ICA',
-                                   captions='All components',
-                                   replace=True)
-        report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
-
-    for fig in range(1,ics+1):
         with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-            report.add_figs_to_section(globals()['ic' + str(fig)],
-                                       section='ICA',
-                                       captions='Artifactual Component number'+str(fig),
+            report.add_figs_to_section(freq_before,
+                                       section='Power Spectrum Density',
+                                       captions='Before filtering',
                                        replace=True)
             report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
 
-    with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
-        report.add_figs_to_section(mov_comp,
-                                   section='Movement compensation',
-                                   captions='Movement compensation',
-                                   replace=True)
-        report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
+        with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+            report.add_figs_to_section(freq_after,
+                                       section='Power Spectrum Density',
+                                       captions='After filtering',
+                                       replace=True)
+            report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
 
-    # continue the pipeline ->
+        with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+            report.add_figs_to_section(bad_ch,
+                                       section='Bad Channels',
+                                       captions='Automated bad channel detection',
+                                       replace=True)
+            report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+        with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+            report.add_figs_to_section(all_comps,
+                                       section='ICA',
+                                       captions='All components',
+                                       replace=True)
+            report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+        for fig in range(1,ics+1):
+            with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+                report.add_figs_to_section(globals()['ic' + str(fig)],
+                                           section='ICA',
+                                           captions='Artifactual Component number'+str(fig),
+                                           replace=True)
+                report.save(str(os.path.join(path_report, 'report.h5')), overwrite=True)
+
+        with mne.open_report(str(os.path.join(path_report, 'report.h5'))) as report:
+            report.add_figs_to_section(mov_comp,
+                                       section='Movement compensation',
+                                       captions='Movement compensation',
+                                       replace=True)
+            report.save(str(os.path.join(path_report, 'report.html')), overwrite=True)
+
+        # continue the pipeline ->
+
 
 # TODO-MUST-HAVE-PREPROCESSING:
 #   decrease_raw_length()
