@@ -83,7 +83,7 @@ def find_ics(raw, ica, eog_chs=('MEG0521', 'MEG0921'), verbose=False):
     return all_ics
 
 
-def find_ics_iteratively(raw, ica, savefile=None, visualization=True, verbose=False):
+def find_ics_iteratively(raw, ica, savefile=None, visualization=False, verbose=False):
     ics = []
 
     new_ics = True  # so that the while loop initiates at all
@@ -179,7 +179,7 @@ def ssp_routine(raw, eog_chs, ecg_chs):
 
 
 # Maxwell filtering
-def find_bad_ch_maxwell(raw, visualization=True, savefile=None, crosstalk_file=None, fine_cal_file=None):
+def find_bad_ch_maxwell(raw, visualization=False, savefile=None, crosstalk_file=None, fine_cal_file=None):
     noisy_chs, flat_chs, auto_scores = mne.preprocessing.find_bad_channels_maxwell(raw,
                                                                                    cross_talk=crosstalk_file,
                                                                                    calibration=fine_cal_file,
@@ -188,7 +188,7 @@ def find_bad_ch_maxwell(raw, visualization=True, savefile=None, crosstalk_file=N
                                                                                    verbose=False)
     raw.info['bads'] = raw.info['bads'] + noisy_chs + flat_chs
 
-    if visualization==True:
+    if visualization:
         ch_type = 'grad'
         ch_subset = auto_scores['ch_types'] == ch_type
         ch_names = auto_scores['ch_names'][ch_subset]
@@ -244,7 +244,7 @@ def chpi_find_head_pos(raw, savefile=None, verbose=False):
     chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw, verbose=verbose)
     chpi_locs = mne.chpi.compute_chpi_locs(raw.info, chpi_amplitudes, verbose=verbose)
     head_pos = mne.chpi.compute_head_pos(raw.info, chpi_locs, verbose=verbose)
-    mne.viz.plot_head_positions(head_pos, mode='traces')
+    #mne.viz.plot_head_positions(head_pos, mode='traces')
     if savefile:
         mne.chpi.write_head_pos(savefile, head_pos)
     return head_pos
@@ -280,14 +280,13 @@ for subject in subjects[:1]:  # test on 1 subj at first
         # raw = decrease_raw_length(raw, events, t_before_event=30)
 
         # Basic preprocessing
-        draw_psd(raw, savefile=str(path_savefile) + '_PSD_before.png')
         raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
                                         savefile=str(path_savefile) + '_linear_filtering_meg.fif')
 
-        # Maxwell filtering:
+        # Maxwell filtering
         crosstalk_file = layout.get(subject=subject, acquisition='crosstalk', extension='fif')
         fine_cal_file = layout.get(subject=subject, acquisition='calibration', extension='fif')
-        raw = find_bad_ch_maxwell(raw_filtered, visualization=True, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
+        raw = find_bad_ch_maxwell(raw_filtered, visualization=False, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
         head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
         raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
                                 savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
@@ -297,9 +296,6 @@ for subject in subjects[:1]:  # test on 1 subj at first
 
         # ECG/EOG artifacts removal
         raw = ica_routine(raw)
-
-        draw_psd(raw, savefile=str(path_savefile) + '_PSD_after.png')
-
 
         # continue the pipeline ->
 
