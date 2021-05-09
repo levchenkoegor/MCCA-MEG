@@ -238,13 +238,27 @@ for subject in subjects[:1]:  # test on 1 subj at first
         raw.filter(l_freq=0.3, h_freq=None)
         raw.save(str(path_savefile) + '_linear_filtering_meg.fif', overwrite=overwrite)
 
-        # Maxwell filtering
-        crosstalk_file = layout.get(subject=subject, acquisition='crosstalk', extension='fif')
-        fine_cal_file = layout.get(subject=subject, acquisition='calibration', extension='fif')
-        raw = find_bad_ch_maxwell(raw_filtered, visualization=False, crosstalk_file=None, fine_cal_file=None, savefile=str(path_savefile) + '_bad_channels.png')
-        head_pos = chpi_find_head_pos(raw, savefile=str(path_savefile) + '_head_pos.pos')
-        raw = maxwell_filtering(raw, st_duration=30, head_pos=head_pos, crosstalk_file=None, fine_cal_file=None,
-                                savefile=str(path_savefile) + '_maxwell_meg_tsss.fif')
+        # maxwell filtering
+        # find bad channels
+        crosstalk_file = layout.get(subject=subject, acquisition='crosstalk', extension='fif')[0].path
+        fine_cal_file = layout.get(subject=subject, acquisition='calibration', extension='dat')[0].path
+        noisy_chs, flat_chs, auto_scores = mne.preprocessing.find_bad_channels_maxwell(raw,
+                                                                                       cross_talk=crosstalk_file,
+                                                                                       calibration=fine_cal_file,
+                                                                                       min_count=3,
+                                                                                       return_scores=True)
+        raw.info['bads'] = raw.info['bads'] + noisy_chs + flat_chs
+        plot_maxwell_bad_ch(auto_scores, savefile=str(path_savefile) + '_bad_channels.png')
+        # head position
+        chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw)
+        chpi_locs = mne.chpi.compute_chpi_locs(raw.info, chpi_amplitudes)
+        head_pos = mne.chpi.compute_head_pos(raw.info, chpi_locs)
+        mne.chpi.write_head_pos(str(path_savefile) + '_head_pos.pos', head_pos)
+        # filtering
+        raw = mne.preprocessing.maxwell_filter(raw, st_duration=10,
+                                                    cross_talk=crosstalk_file, calibration=fine_cal_file,
+                                                    head_pos=head_pos)
+        raw.save(str(path_savefile) + '_maxwell_meg_tsss.fif', overwrite=overwrite)
 
         # Downsample
         raw = downsample(raw, target_fs=250)
