@@ -35,7 +35,7 @@ def decrease_raw_length(raw, events, t_before_event=30):
 
 # ICA
 def find_ics(raw, ica, eog_chs=('MEG0521', 'MEG0921'), verbose=False):
-    eog_chs_raw = find_chs(raw, ch_type='EOG')
+    eog_chs_raw = [ch_name for ch_name in raw.info['ch_names'] if 'EOG' in ch_name]
     eog_chs = eog_chs_raw if eog_chs_raw else eog_chs
 
     heart_ics, _ = ica.find_bads_ecg(raw, threshold='auto', verbose=verbose)
@@ -85,11 +85,6 @@ def find_ics_iteratively(raw, ica, savefile=None, visualization=False, verbose=F
 
 
 # SSP
-def find_chs(raw, ch_type=None):
-    chs_names = [ch_name for ch_name in raw.info['ch_names'] if ch_type in ch_name]
-    return chs_names
-
-
 def fit_ssp_eog(raw, eog_chs, savefile=None, verbose=False):
     eog_projs_source1, eog_events_source1 = mne.preprocessing.compute_proj_eog(raw, n_grad=1, n_mag=1, n_eeg=0, no_proj=True,
                                                               ch_name=eog_chs[0], event_id=990, verbose=verbose)
