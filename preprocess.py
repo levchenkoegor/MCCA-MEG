@@ -34,15 +34,6 @@ def decrease_raw_length(raw, events, t_before_event=30):
 
 
 # ICA
-def fit_ica(raw, h_freq=1, savefile=None, verbose=False):
-    raw.filter(h_freq, None)
-    ica = mne.preprocessing.ICA(random_state=2, n_components=25, verbose=verbose)
-    ica.fit(raw)
-    if savefile:
-        ica.save(savefile)
-    return ica
-
-
 def find_ics(raw, ica, eog_chs=('MEG0521', 'MEG0921'), verbose=False):
     eog_chs_raw = find_chs(raw, ch_type='EOG')
     eog_chs = eog_chs_raw if eog_chs_raw else eog_chs
