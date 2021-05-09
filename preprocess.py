@@ -241,11 +241,10 @@ for subject in subjects[:1]:  # test on 1 subj at first
 
         # continue the pipeline ->
 
-
 # TODO-MUST-HAVE-PREPROCESSING:
 #   decrease_raw_length()
 #   function to pick only video interval (?)
-#   choose the best channels for ICA when there are no EOG chs (line 66)
+#   choose the best channels for ICA when there are no EOG chs (line 37)
 #   solve the infinite problem with iterative ICA (why it goes to infinity?)
 #   check the signal manually - topoplots looks very temporal (probably because of the noise)
 #   construct kind of a report to spot noisy patients (html format?)
@@ -254,7 +253,7 @@ for subject in subjects[:1]:  # test on 1 subj at first
 # TODO-NICE-TO-HAVE:
 #   maxfilter: manuall bad_channels detection after automatic
 #   fine calibration file and crosstalk compensation file?
-#   Overwrite=False looks useles now
+#   Overwrite=False looks useless now
 #   suppress warning about leading dot (.)
 #   plotting functions for saving ICA and SSP pictures
 #   make refactoring
