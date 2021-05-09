@@ -34,21 +34,6 @@ def decrease_raw_length(raw, events, t_before_event=30):
 
 
 # Basic preprocessing
-def downsample(raw, target_fs, savefile=None, overwrite=True):
-    raw.resample(target_fs, npad='auto')
-    if savefile:
-        raw.save(savefile, overwrite=overwrite)
-    return raw
-
-
-def linear_filtering(raw, notch=None, l_freq=None, h_freq=None, savefile=None, overwrite=True):
-    raw.notch_filter(notch, filter_length='auto', phase='zero')
-    raw.filter(l_freq, h_freq, fir_design='firwin')
-    if savefile:
-        raw.save(savefile, overwrite=overwrite)
-    return raw
-
-
 def draw_psd(raw, show=False, savefile=None):
     p = raw.plot_psd(show=show, fmax=125)
     p.axes[0].set_ylim(-30, 60)
