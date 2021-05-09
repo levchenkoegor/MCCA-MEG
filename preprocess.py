@@ -233,9 +233,10 @@ for subject in subjects[:1]:  # test on 1 subj at first
         raw = increase_raw_length(raw, t=30)  # add a chunk to avoid filtering problem
         # raw = decrease_raw_length(raw, events, t_before_event=30)  # drop useless part before the event starts
 
-        # Basic preprocessing
-        raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
-                                        savefile=str(path_savefile) + '_linear_filtering_meg.fif')
+        # linear filtering
+        raw.notch_filter(freqs=[50, 100])
+        raw.filter(l_freq=0.3, h_freq=None)
+        raw.save(str(path_savefile) + '_linear_filtering_meg.fif', overwrite=overwrite)
 
         # Maxwell filtering
         crosstalk_file = layout.get(subject=subject, acquisition='crosstalk', extension='fif')
