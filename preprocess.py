@@ -228,7 +228,16 @@ for subject in subjects[:1]:  # test on 1 subj at first
         raw.save(str(path_savefile) + '_downsampled.fif', overwrite=overwrite)
 
         # ECG/EOG artifacts removal
-        raw = ica_routine(raw)
+        # fit ica
+        raw_hp_ica = raw.copy().filter(l_freq=None, h_freq=1)
+        ica = mne.preprocessing.ICA(random_state=2, n_components=25)
+        ica.fit(raw_hp_ica)
+        ica.save(str(path_savefile) + '_ica.fif')
+        # find all bad components iteratively
+        ics = find_ics_iteratively(raw_hp_ica, ica, savefile=str(path_savefile) + '_ics.txt')
+        # apply ica
+        ica.apply(raw, exclude=ics)
+        raw.save(str(path_savefile) + '_applied_ICA_meg.fif', overwrite=overwrite)
 
         # continue the pipeline ->
 
