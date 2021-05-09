@@ -56,7 +56,7 @@ def find_ics_iteratively(raw, ica, savefile=None, visualization=False, verbose=F
 
     new_ics = True  # so that the while loop initiates at all
     i = 0
-    while new_ics and i < 3:
+    while new_ics and i < 3:  # why it goes infinity?
         raw_copy = raw.copy()
 
         # Remove all components we've found so far
