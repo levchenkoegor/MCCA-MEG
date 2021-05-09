@@ -260,8 +260,9 @@ for subject in subjects[:1]:  # test on 1 subj at first
                                                     head_pos=head_pos)
         raw.save(str(path_savefile) + '_maxwell_meg_tsss.fif', overwrite=overwrite)
 
-        # Downsample
-        raw = downsample(raw, target_fs=250)
+        # downsample
+        raw.resample(sfreq=250)  # do we need to include events matrix?
+        raw.save(str(path_savefile) + '_downsampled.fif', overwrite=overwrite)
 
         # ECG/EOG artifacts removal
         raw = ica_routine(raw)
