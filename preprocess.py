@@ -33,14 +33,6 @@ def decrease_raw_length(raw, events, t_before_event=30):
     return raw
 
 
-# Basic preprocessing
-def draw_psd(raw, show=False, savefile=None):
-    p = raw.plot_psd(show=show, fmax=125)
-    p.axes[0].set_ylim(-30, 60)
-    if savefile:
-        p.savefig(savefile)
-
-
 # ICA
 def fit_ica(raw, h_freq=1, savefile=None, verbose=False):
     raw.filter(h_freq, None)
