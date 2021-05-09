@@ -204,27 +204,6 @@ def plot_maxwell_bad_ch(auto_scores, savefile=None):
     # Save the figure in a subfolder 'Bad_Channels'
     pyplot.savefig(savefile)
 
-    return raw
-
-
-def maxwell_filtering(raw, st_duration=10, head_pos=None, savefile=None, overwrite=True, crosstalk_file=None, fine_cal_file=None, verbose=False):
-    raw_tsss = mne.preprocessing.maxwell_filter(raw, st_duration=st_duration,
-                                                cross_talk=crosstalk_file, calibration=fine_cal_file,
-                                                head_pos=head_pos, verbose=verbose)
-    if savefile:
-        raw_tsss.save(savefile, overwrite=overwrite)
-    return raw_tsss
-
-
-def chpi_find_head_pos(raw, savefile=None, verbose=False):
-    chpi_amplitudes = mne.chpi.compute_chpi_amplitudes(raw, verbose=verbose)
-    chpi_locs = mne.chpi.compute_chpi_locs(raw.info, chpi_amplitudes, verbose=verbose)
-    head_pos = mne.chpi.compute_head_pos(raw.info, chpi_locs, verbose=verbose)
-    #mne.viz.plot_head_positions(head_pos, mode='traces')
-    if savefile:
-        mne.chpi.write_head_pos(savefile, head_pos)
-    return head_pos
-
 
 # MAIN
 proj_root = Path() / '..'
