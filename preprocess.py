@@ -228,11 +228,10 @@ for subject in subjects[:1]:  # test on 1 subj at first
         path_savefile = data_deriv_dir / template.format(subject=subject, session=session, task=task)
         path_savefile.parent.mkdir(parents=True, exist_ok=True)
 
-        # Prepare for preprocessing: make annotations, add a chunk to avoid filtering problem and drop
-        # too long part before event starts
-        raw = set_annot_from_events(raw)
-        raw = increase_raw_length(raw, t=30)
-        # raw = decrease_raw_length(raw, events, t_before_event=30)
+        # prepare for preprocessing
+        raw = set_annot_from_events(raw)  # make annotations
+        raw = increase_raw_length(raw, t=30)  # add a chunk to avoid filtering problem
+        # raw = decrease_raw_length(raw, events, t_before_event=30)  # drop useless part before the event starts
 
         # Basic preprocessing
         raw_filtered = linear_filtering(raw, notch=[50, 100], l_freq=0.3,
