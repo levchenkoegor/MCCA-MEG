@@ -84,24 +84,6 @@ def find_ics_iteratively(raw, ica, savefile=None, visualization=False, verbose=F
     return ics
 
 
-def apply_ica_proj(raw, ica, ics, savefile=None, overwrite=True):
-    ica.apply(raw, exclude=ics)
-    if savefile:
-        raw.save(savefile, overwrite=overwrite)
-    return raw
-
-
-def ica_routine(raw):
-    ica = fit_ica(raw, h_freq=1, savefile=str(path_savefile) + '_ica.fif')
-    ics = find_ics_iteratively(raw, ica, savefile=str(path_savefile) + '_ics.txt')
-    raw = apply_ica_proj(raw, ica, ics, savefile=str(path_savefile) + '_applied_ICA_meg.fif')
-    return raw
-
-
-# def plot_ica():
-    # something
-
-
 # SSP
 def find_chs(raw, ch_type=None):
     chs_names = [ch_name for ch_name in raw.info['ch_names'] if ch_type in ch_name]
