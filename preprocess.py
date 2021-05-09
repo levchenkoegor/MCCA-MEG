@@ -124,10 +124,6 @@ def ssp_routine(raw, eog_chs, ecg_chs):
     return raw
 
 
-# def plot_ssp(raw):
-    # something
-
-
 # Maxwell filtering
 def plot_maxwell_bad_ch(auto_scores, savefile=None):
     ch_type = 'grad'
@@ -223,8 +219,8 @@ for subject in subjects[:1]:  # test on 1 subj at first
         mne.chpi.write_head_pos(str(path_savefile) + '_head_pos.pos', head_pos)
         # filtering
         raw = mne.preprocessing.maxwell_filter(raw, st_duration=10,
-                                                    cross_talk=crosstalk_file, calibration=fine_cal_file,
-                                                    head_pos=head_pos)
+                                               cross_talk=crosstalk_file, calibration=fine_cal_file,
+                                               head_pos=head_pos)
         raw.save(str(path_savefile) + '_maxwell_meg_tsss.fif', overwrite=overwrite)
 
         # downsample
