@@ -11,10 +11,10 @@ from bids import BIDSLayout
 
 # Helpers
 def set_annot_from_events(raw, verbose=False):
-    events = mne.find_events(raw, stim_channel='STI101', verbose=verbose)
-    onsets = events[:, 0] / raw.info['sfreq']
+    events = mne.find_events(raw, stim_channel='STI101', verbose=verbose)  # find all events
+    onsets = events[:, 0] / raw.info['sfreq']  # calculate onsets in seconds
     durations = np.zeros_like(onsets)
-    descriptions = [str(event_id) for event_id in events[:, -1]]
+    descriptions = [str(event_id) for event_id in events[:, -1]]  # '1', '2', '3', '4'
     annot_from_events = mne.Annotations(onset=onsets, duration=durations,
                                         description=descriptions,
                                         orig_time=raw.info['meas_date'])
