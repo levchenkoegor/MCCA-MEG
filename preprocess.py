@@ -217,14 +217,16 @@ subjects = layout.get_subjects()
 template = os.path.join('sub-{subject}', 'ses-{session}', 'meg', 'sub-{subject}_ses-{session}_task-{task}')
 
 for subject in subjects[:1]:  # test on 1 subj at first
-    # 4 files per subj
-    meg_files_subj = layout.get(subject=subject, task='vid*', extension='fif', regex_search=True)
+    meg_files_subj = layout.get(subject=subject, task='vid*',
+                                extension='fif', regex_search=True)  # 4 files per subj
     for meg_file_subj in meg_files_subj:
         session = meg_file_subj.get_entities()['session']
         task = meg_file_subj.get_entities()['task']
         print(f'sub-{subject}_session-{session}_task-{task} is calculating...')
+        overwrite = True
 
-        raw = mne.io.read_raw_fif(meg_file_subj, preload=True, verbose=False)
+        # read raw file and create derivatives folder
+        raw = mne.io.read_raw_fif(meg_file_subj, preload=True)
         path_savefile = data_deriv_dir / template.format(subject=subject, session=session, task=task)
         path_savefile.parent.mkdir(parents=True, exist_ok=True)
 
